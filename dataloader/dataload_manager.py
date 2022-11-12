@@ -100,7 +100,7 @@ class dataload_manager():
                 self.train_audio = pickle.load(f)
         return data_dict
     
-    def load_full_audio_feat(self, fold_idx=1):
+    def load_full_audio_feat(self, fold_idx: int=1):
         if self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}')
@@ -112,7 +112,9 @@ class dataload_manager():
             with open(str(data_path.joinpath('test.pkl')), "rb") as f: 
                 self.test_audio = pickle.load(f)
 
-    def load_video_feat(self, fold_idx=1, split_type='train'):
+    def load_video_feat(self, 
+                        fold_idx: int=1, 
+                        split_type: str='train') -> dict:
         if self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', 
@@ -123,7 +125,7 @@ class dataload_manager():
             data_dict = pickle.load(f)
         return data_dict
 
-    def load_full_video_feat(self, fold_idx=1):
+    def load_full_video_feat(self, fold_idx: int=1):
         if self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}')

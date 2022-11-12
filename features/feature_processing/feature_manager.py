@@ -67,13 +67,15 @@ class feature_manager():
     def extract_mfcc_features(self, 
                               audio_path: str, 
                               label_str: str,
+                              frame_length: int=40,
+                              frame_shift:  int=20,
                               max_len: int=-1) -> (float, int):
         """Extract the mfcc feature from audio streams."""
         audio, sr = torchaudio.load(str(audio_path))
         features = torchaudio.compliance.kaldi.fbank(
                     waveform=torch.Tensor(torch.Tensor(audio)),
-                    frame_length=40, 
-                    frame_shift=20,
+                    frame_length=frame_length, 
+                    frame_shift=frame_shift,
                     num_mel_bins=80,
                     window_type="hamming")
         features = features.detach().cpu().numpy()
@@ -83,9 +85,11 @@ class feature_manager():
     
     def fetch_partition(self, fold_idx=1, alpha=0.5):
         # reading partition
+        alpha_str = str(alpha).replace('.', '')
         if self.args.dataset == "ucf101":
-            alpha_str = str(alpha).replace('.', '')
             partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'fold{fold_idx}', f'partition_alpha{alpha_str}.pkl')
+        elif self.args.dataset == "mit51":
+            partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'partition_alpha{alpha_str}.pkl')
         
         with open(str(partition_path), "rb") as f: 
             partition_dict = pickle.load(f)
