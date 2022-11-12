@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import numpy as np
 import collections
@@ -14,6 +15,7 @@ from torch.utils import data
 from copy import deepcopy
 
 warnings.filterwarnings('ignore')
+logging.basicConfig(format='%(asctime)s %(levelname)-3s ==> %(message)s', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
 
 
 class Server(object):
@@ -24,23 +26,29 @@ class Server(object):
         self.result_dict = dict()
         self.criterion = criterion
         self.model_setting_str = self.get_model_setting()
-
+        
     def initialize_log(self, fold_idx=1):
         # log saving path
         self.fold_idx = fold_idx
         self.log_path = Path(self.args.data_dir).joinpath('log', self.args.dataset, self.model_setting_str, f'fold{fold_idx}', 'raw_log')
         self.result_path = Path(self.args.data_dir).joinpath('log', self.args.dataset, self.model_setting_str, f'fold{fold_idx}')
         Path.mkdir(self.log_path, parents=True, exist_ok=True)
-        self.log_writer = SummaryWriter(str(self.log_path))
+        self.log_writer = SummaryWriter(str(self.log_path), filename_suffix=f'_{self.model_setting_str}')
         
     def get_model_setting(self):
         # Return model setting
         model_setting_str = 'alpha'+str(self.args.alpha).replace('.', '')
-        model_setting_str += '_le_'+str(self.args.local_epochs)
-        model_setting_str += '_lr_' + str(self.args.learning_rate)[2:]
-        model_setting_str += '_bs_'+str(self.args.batch_size)
+        model_setting_str += '_le'+str(self.args.local_epochs)
+        model_setting_str += '_lr' + str(self.args.learning_rate)[2:]
+        model_setting_str += '_bs'+str(self.args.batch_size)
+        if self.args.missing_modality == True:
+            model_setting_str += '_mm'+str(self.args.missing_modailty_rate).replace('.', '')
+        if self.args.label_nosiy == True:
+            model_setting_str += '_ln'+str(self.args.label_nosiy_level).replace('.', '')
+        if self.args.missing_label == True:
+            model_setting_str += '_ml'+str(self.args.missing_label_rate).replace('.', '')
         return model_setting_str
-
+    
     def sample_clients(self, num_of_clients, sample_rate=0.1):
         # Sample clients per round
         self.clients_list = list()
@@ -110,6 +118,7 @@ class Server(object):
         self.result = self.result_summary(truth_list, pred_list, top_k_list, loss_list)
 
     def result_summary(self, truth_list, pred_list, top_k_list, loss_list):
+        # save result summary
         result_dict = dict()
         result_dict['acc'] = accuracy_score(truth_list, pred_list)*100
         result_dict['uar'] = recall_score(truth_list, pred_list, average="macro")*100
@@ -125,8 +134,11 @@ class Server(object):
         uar = self.result_dict[self.epoch][data_split]['uar']
         top5_acc = self.result_dict[self.epoch][data_split]['top5_acc']
 
-        print(f'| Global Round {data_split} set : {self.epoch} | Loss: {loss:.3f} | Acc: {acc:.2f} | Top-5 Acc: {top5_acc:.2f} |')
-        
+        # loggin console
+        logging.info(f'Current Round {data_split} set : {self.epoch}')
+        logging.info(f'Loss: {loss:.3f}, Acc: {acc:.2f}, Top-5 Acc: {top5_acc:.2f}')
+
+        # loggin to folder
         self.log_writer.add_scalar(f'Loss/{data_split}', loss, self.epoch)
         self.log_writer.add_scalar(f'Acc/{data_split}', acc, self.epoch)
         self.log_writer.add_scalar(f'UAR/{data_split}', uar, self.epoch)
@@ -136,6 +148,11 @@ class Server(object):
         f = open(str(self.model_result_path.joinpath('results.pkl')), "wb")
         pickle.dump(result_dict, f)
         f.close()
+
+    def save_train_updates(self, model_updates, num_sample, result):
+        self.model_updates.append(model_updates)
+        self.num_samples_list.append(num_sample)
+        self.result_dict[self.epoch]['train'].append(result)
 
     def log_epoch_result(self, metric='acc'):
         if self.epoch == 0: 
@@ -150,17 +167,22 @@ class Server(object):
             self.best_test_dict = self.result_dict[self.epoch]['test']
             torch.save(deepcopy(self.global_model.state_dict()), str(self.result_path.joinpath('model.pt')))
         
-        # log results
+        # log dev results
         best_dev_acc = self.best_dev_dict['acc']
         best_dev_uar = self.best_dev_dict['uar']
+        best_dev_top5_acc = self.best_dev_dict['top5_acc']
+
+        # log test results
         best_test_acc = self.best_test_dict['acc']
         best_test_uar = self.best_test_dict['uar']
-
-        print(f'Best epoch {self.best_epoch}, best dev acc {best_dev_acc:.2f}%, top-5 acc {best_dev_uar:.2f}%')
-        print(f'Best epoch {self.best_epoch}, best test rec {best_test_acc:.2f}%, top-5 acc {best_test_uar:.2f}%')
+        best_test_top5_acc = self.best_test_dict['top5_acc']
         
+        # logging
+        logging.info(f'Best epoch {self.best_epoch}')
+        logging.info(f'Best dev acc {best_dev_acc:.2f}%, top-5 acc {best_dev_top5_acc:.2f}%')
+        logging.info(f'Best test rec {best_test_acc:.2f}%, top-5 acc {best_test_top5_acc:.2f}%')
 
-    def summarize_results():
+    def summarize_results(self):
         row_df = pd.DataFrame(index=[f'fold{self.fold_idx}'])
         row_df['acc']  = self.best_test_dict['acc']
         row_df['top5_acc'] = self.best_test_dict['top5_acc']

@@ -20,11 +20,6 @@ from simulation_manager import simulation_manager
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate Simulation Features')
     parser.add_argument(
-        '--raw_data_dir',
-        default='/media/data/public-data/MMAction/ucf101', 
-        type=str,
-        help='source data directory')
-    parser.add_argument(
         '--output_dir', 
         default='/media/data/projects/speech-privacy/fed-multimodal/',
         type=str, 

@@ -10,60 +10,6 @@ import collections
 warnings.filterwarnings('ignore')
 
 
-def pred_summary(y_true, y_pred):
-    result_dict = {}
-    acc_score = accuracy_score(y_true, y_pred)
-    rec_score = recall_score(y_true, y_pred, average='macro')
-    confusion_matrix_arr = np.round(confusion_matrix(y_true, y_pred, normalize='true')*100, decimals=2)
-    
-    result_dict['acc'] = acc_score
-    result_dict['uar'] = rec_score
-    result_dict['conf'] = confusion_matrix_arr
-    return result_dict
-
-
-def result_summary(step_outputs):
-    loss_list, y_true, y_pred = [], [], []
-    for step in range(len(step_outputs)):
-        for idx in range(len(step_outputs[step]['pred'])):
-            y_true.append(step_outputs[step]['truth'][idx])
-            y_pred.append(step_outputs[step]['pred'][idx])
-        loss_list.append(step_outputs[step]['loss'])
-
-    result_dict = {}
-    acc_score = accuracy_score(y_true, y_pred)
-    rec_score = recall_score(y_true, y_pred, average='macro')
-    confusion_matrix_arr = np.round(confusion_matrix(y_true, y_pred, normalize='true')*100, decimals=2)
-    
-    result_dict['acc'] = acc_score
-    result_dict['uar'] = rec_score
-    result_dict['conf'] = confusion_matrix_arr
-    result_dict['loss'] = np.mean(loss_list)
-    result_dict['num_samples'] = len(y_pred)
-    return result_dict, y_pred, y_true
-
-
-def effective_sample(label_list, num_class):
-    beta = 0.9999
-    class_dict = collections.Counter(label_list)
-    
-    if len(class_dict) < num_class:
-        minimum_val = 1
-    else:
-        minimum = min(class_dict, key=class_dict.get)
-        minimum_val = class_dict[minimum]
-    
-    cls_num_list = []
-    for i in range(num_class):
-        if i in class_dict: cls_num_list.append(class_dict[i])
-        else: cls_num_list.append(minimum_val)
-        
-    effective_num = 1.0 - np.power(0.999, cls_num_list)
-    per_cls_weights = (1.0 - beta) / np.array(effective_num)
-    per_cls_weights = per_cls_weights / np.sum(per_cls_weights) * len(cls_num_list)
-    return per_cls_weights
-
-
 class Client(object):
     def __init__(self, args, device, criterion, dataloader, model):
         self.args = args
@@ -109,7 +55,11 @@ class Client(object):
                 optimizer.zero_grad()
 
                 x_a, x_b, y = batch_data
-                x_a, x_b, y = x_a.to(self.device), x_b.to(self.device), y.to(self.device)
+                
+                # missing modality case
+                if x_a[0] is not None: x_a = x_a.to(self.device)
+                if x_b[0] is not None: x_b = x_b.to(self.device)
+                y = y.to(self.device)
                 
                 # forward
                 outputs = self.model(x_a.float(), x_b.float())
@@ -119,9 +69,10 @@ class Client(object):
                 loss = self.criterion(outputs, y)
                 loss.backward()
                 
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
                 optimizer.step()
                 
+                # save results
                 predictions = np.argmax(outputs.detach().cpu().numpy(), axis=1)
                 top_k_predictions = np.argsort(outputs.detach().cpu().numpy(), axis = 1)[:, ::-1][:, :5]
 
@@ -130,6 +81,7 @@ class Client(object):
                     truth_list.append(y.detach().cpu().numpy()[idx])
                     top_k_list.append(top_k_predictions[idx])
                 loss_list.append(loss.item())
+
         self.result = self.result_summary(truth_list, pred_list, top_k_list, loss_list)
 
     def result_summary(self, truth_list, pred_list, top_k_list, loss_list):
@@ -141,36 +93,3 @@ class Client(object):
         result_dict["loss"] = np.mean(loss_list)
         result_dict["sample"] = len(truth_list)
         return result_dict
-
-    def inference(self):
-        self.model.eval()
-        step_outputs = []
-        
-        for batch_idx, batch_data in enumerate(self.dataloader):
-            
-            if 'bert_' in self.config['feature_type']:
-                x1, x2, y = batch_data
-                x1, x2, y = x1.to(self.device), x2.to(self.device), y.to(self.device)
-                logits = self.model(x1.float(), x2.float())
-            elif 'bert' in self.config['feature_type'] or 'raw_' in self.config['feature_type'] or self.config['feature_type'] == 'mel_spec':
-                x, y, l = batch_data
-                # _, indices = torch.sort(l, descending=True)
-                # x, l, y = x[indices], l[indices], y[indices]
-                x, l, y = x.to(self.device), l.to(self.device), y.to(self.device)
-                logits = self.model(x.float(), l)
-            else:
-                x, y = batch_data
-                x, y = x.to(self.device), y.to(self.device)
-                logits = self.model(x.float())
-            
-            loss = self.criterion(logits, y)
-            
-            predictions = np.argmax(logits.detach().cpu().numpy(), axis=1)
-            pred_list = [predictions[pred_idx] for pred_idx in range(len(predictions))]
-            truth_list = [y.detach().cpu().numpy()[pred_idx] for pred_idx in range(len(predictions))]
-            step_outputs.append({'loss': loss.item(), 'pred': pred_list, 'truth': truth_list})
-        result_dict, y_pred, y_true = result_summary(step_outputs)
-        
-        self.result = result_dict
-        self.test_true = y_true
-        self.test_pred = y_pred
