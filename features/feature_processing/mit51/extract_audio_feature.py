@@ -72,7 +72,7 @@ if __name__ == '__main__':
     
     # extract data
     for client in tqdm(partition_dict):
-        data_dict = partition_dict[client]
+        data_dict = partition_dict[client].copy()
         for idx in range(len(partition_dict[client])):
             file_path = partition_dict[client][idx][1]
             video_id, _ = osp.splitext(osp.basename(file_path))

@@ -74,7 +74,7 @@ if __name__ == '__main__':
                 file_path = partition_dict[client][idx][1]
                 video_id, _ = osp.splitext(osp.basename(file_path))
                 label_str = osp.basename(osp.dirname(file_path))
-                features = feature_manager.extract_mfcc_features(file_path, label_str, max_len=1000)
+                features = feature_manager.extract_mfcc_features(file_path, label_str, max_len=500)
                 data_dict[f'{label_str}/{video_id}'] = features
         
         # saving features

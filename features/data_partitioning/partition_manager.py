@@ -14,6 +14,7 @@ class partition_manager():
         self.args = args
     
     def fetch_filelist(self):
+        # fetch file list
         if self.args.dataset == "ucf101":
             self.file_list = glob.glob(self.args.raw_data_dir + '/audios/*/*.wav')
             self.file_list.sort()
@@ -29,6 +30,7 @@ class partition_manager():
             self.test_file_list.sort()
             
     def fetch_label_dict(self):
+        # fetch unique labels
         if self.args.dataset == "ucf101":
             unique_labels = [path.split('/')[-2] for path in self.file_list]
             unique_labels = list(set(unique_labels))

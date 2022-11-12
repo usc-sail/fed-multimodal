@@ -55,6 +55,10 @@ def data_partition(args: dict):
         for line in test_split_files:
             file_id = line.split(' ')[0]
             if file_id in file_id_list: test_file_id.append(file_id)
+        
+        train_val_file_id.sort()
+        test_file_id.sort()
+
         # split train and dev
         train_file_id, dev_file_id = pm.split_train_dev(train_val_file_id)
         
@@ -111,13 +115,12 @@ if __name__ == "__main__":
     
     parser.add_argument(
         '--num_clients', 
-        type=int, 
-        default=50, 
+        type=int,
+        default=100,
         help='Number of clients to cut from whole data.'
     )
     parser.add_argument("--dataset", default="ucf101")
     args = parser.parse_args()
-    
     data_partition(args)
     
     
