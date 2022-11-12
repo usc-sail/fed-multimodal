@@ -33,14 +33,14 @@ The current simulation has several features:
 * Missing labels (Follow Bernoulli distribution)
 
 
-To simulate missing modality:
+#### To simulate missing modality:
 
 ```
 cd simulation_features/ufc101
 python3 simulation_feature.py --alpha ALPHA_VALUE_0_TO_1 --en_missing_modality --missing_modailty_rate VALUE_0_TO_1 --output_dir PATH
 ```
 
-To simulate label noise:
+#### To simulate label noise:
 
 ```
 cd simulation_features/ufc101
@@ -48,7 +48,7 @@ python3 simulation_feature.py --alpha ALPHA_VALUE_0_TO_1 --en_label_nosiy --labe
 ```
 
 
-To simulate missing labels:
+#### To simulate missing labels:
 
 ```
 cd simulation_features/ufc101
