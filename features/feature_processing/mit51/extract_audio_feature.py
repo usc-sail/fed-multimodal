@@ -65,7 +65,7 @@ if __name__ == '__main__':
     feature_manager = feature_manager(args)
         
     # fetch all files for processing
-    partition_dict = feature_manager.fetch_partition(alpha=1.0)
+    partition_dict = feature_manager.fetch_partition(alpha=args.alpha)
     
     print('Reading videos from folder: ', args.raw_data_dir)
     print('Total number of videos found: ', len(partition_dict.keys()))
@@ -87,38 +87,3 @@ if __name__ == '__main__':
         # saving features
         with open(str(output_data_path.joinpath(f'{client}.pkl')), 'wb') as handle:
             pickle.dump(data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    """
-    # saving features
-    save_path = str(output_data_path.joinpath(f'feature.pkl'))
-    with open(save_path, 'wb') as handle:
-        pickle.dump(data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    with open(str(output_data_path.joinpath(f'feature.pkl')), "rb") as f: 
-        data_dict = pickle.load(f)
-
-    # save for later uses
-
-    output_data_path = Path(args.output_dir).joinpath('feature', 'audio', args.feature_type, args.dataset, f'alpha{alpha_str}', f'fold{fold_idx+1}')
-    Path.mkdir(output_data_path, parents=True, exist_ok=True)
-
-    partition_dict = feature_manager.fetch_partition(fold_idx+1, alpha=args.alpha)
-    for client in partition_dict:
-        for idx in range(len(partition_dict[client])):
-            features = data_dict[partition_dict[client][idx][0]]
-            partition_dict[client][idx].append(features)
-
-    # save dev
-    with open(output_data_path.joinpath(f'dev.pkl'), 'wb') as handle:
-        pickle.dump(partition_dict['dev'], handle, protocol=pickle.HIGHEST_PROTOCOL)
-    
-    # save test
-    with open(output_data_path.joinpath(f'test.pkl'), 'wb') as handle:
-        pickle.dump(partition_dict['test'], handle, protocol=pickle.HIGHEST_PROTOCOL)
-    
-    # save train
-    partition_dict.pop('dev')
-    partition_dict.pop('test')
-    with open(output_data_path.joinpath(f'train.pkl'), 'wb') as handle:
-        pickle.dump(partition_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    """
