@@ -18,7 +18,7 @@ To process the location data, we run the following:
 
 ```
 cd data_partitioning/ufc101
-python3 data_partition.py --alpha ALPHA_VALUE_0_TO_1
+python3 data_partition.py --alpha ALPHA_VALUE_0_TO_1 --raw_data_dir PATH --output_dir PATH
 ```
 
 Each client's data follows the following format: 
@@ -37,14 +37,14 @@ To simulate missing modality:
 
 ```
 cd simulation_features/ufc101
-python3 simulation_feature.py --alpha ALPHA_VALUE_0_TO_1 --en_missing_modality --missing_modailty_rate VALUE_0_TO_1
+python3 simulation_feature.py --alpha ALPHA_VALUE_0_TO_1 --en_missing_modality --missing_modailty_rate VALUE_0_TO_1 --output_dir PATH
 ```
 
 To simulate label noise:
 
 ```
 cd simulation_features/ufc101
-python3 simulation_feature.py --alpha ALPHA_VALUE_0_TO_1 --en_label_nosiy --label_nosiy_level VALUE_0_TO_1
+python3 simulation_feature.py --alpha ALPHA_VALUE_0_TO_1 --en_label_nosiy --label_nosiy_level VALUE_0_TO_1  --output_dir PATH
 ```
 
 
@@ -52,7 +52,7 @@ To simulate missing labels:
 
 ```
 cd simulation_features/ufc101
-python3 simulation_feature.py --alpha ALPHA_VALUE_0_TO_1 --en_missing_label --missing_label_rate VALUE_0_TO_1
+python3 simulation_feature.py --alpha ALPHA_VALUE_0_TO_1 --en_missing_label --missing_label_rate VALUE_0_TO_1  --output_dir PATH
 ```
 
 Each client's data follows the following format: 
@@ -79,10 +79,10 @@ To generate features for UCF data set:
 cd feature_processing/ufc101
 
 # extract mobilenet_v2 feature
-python3 extract_frame_feature.py --feature_type mobilenet_v2 --alpha ALPHA_VALUE_0_TO_1
+python3 extract_frame_feature.py --feature_type mobilenet_v2 --alpha ALPHA_VALUE_0_TO_1 --raw_data_dir PATH --output_dir PATH
 
 # extract mfcc feature
-python3 extract_audio_feature.py --feature_type mfcc --alpha ALPHA_VALUE_0_TO_1
+python3 extract_audio_feature.py --feature_type mfcc --alpha ALPHA_VALUE_0_TO_1 --raw_data_dir PATH --output_dir PATH
 ```
 
 Now you should be able to the output folder with the following folders:
