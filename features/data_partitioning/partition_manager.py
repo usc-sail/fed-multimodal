@@ -1,7 +1,8 @@
 import os
-import random
-import glob
 import pdb
+import glob
+import random
+import collections
 import numpy as np
 import os.path as osp
 from tqdm import tqdm
@@ -16,11 +17,35 @@ class partition_manager():
         if self.args.dataset == "ucf101":
             self.file_list = glob.glob(self.args.raw_data_dir + '/audios/*/*.wav')
             self.file_list.sort()
+        elif self.args.dataset == "mit51":
+            self.train_file_list = glob.glob(self.args.raw_data_dir + '/audios/training/*/*.wav')
+            self.test_file_list = glob.glob(self.args.raw_data_dir + '/audios/validation/*/*.wav')
+            self.train_file_list.sort()
+            self.test_file_list.sort()
+        elif self.args.dataset == "mit101":
+            self.train_file_list = glob.glob(self.args.raw_data_dir + '/audios/training/*/*.wav')
+            self.test_file_list = glob.glob(self.args.raw_data_dir + '/audios/validation/*/*.wav')
+            self.train_file_list.sort()
+            self.test_file_list.sort()
             
     def fetch_label_dict(self):
         if self.args.dataset == "ucf101":
             unique_labels = [path.split('/')[-2] for path in self.file_list]
             unique_labels = list(set(unique_labels))
+            unique_labels.sort()
+            self.label_dict = {k: i for i, k in enumerate(unique_labels)}
+        elif self.args.dataset == "mit51":
+            full_labels = [path.split('/')[-2] for path in self.train_file_list]
+            label_frequency = collections.Counter(full_labels)
+            top101_label_frequency = label_frequency.most_common(51)
+            unique_labels = list(set([label for label, freq in top101_label_frequency]))
+            unique_labels.sort()
+            self.label_dict = {k: i for i, k in enumerate(unique_labels)}
+        elif self.args.dataset == "mit101":
+            full_labels = [path.split('/')[-2] for path in self.train_file_list]
+            label_frequency = collections.Counter(full_labels)
+            top101_label_frequency = label_frequency.most_common(101)
+            unique_labels = list(set([label for label, freq in top101_label_frequency]))
             unique_labels.sort()
             self.label_dict = {k: i for i, k in enumerate(unique_labels)}
         

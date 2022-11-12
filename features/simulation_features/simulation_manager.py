@@ -71,7 +71,7 @@ class simulation_manager():
             else:
                 prob_element = (noisy_level) / (class_num-zeros-1)
             prob_matrix[idx] = np.where(prob_matrix[idx] == 1-noisy_level, prob_element, prob_matrix[idx])
-            prob_matrix[idx][idx] = 1-label_nosiy_level
+            prob_matrix[idx][idx] = 1-noisy_level
             
         return prob_matrix
     
@@ -102,7 +102,7 @@ class simulation_manager():
         # 2. generate label noise matrix for later
         if self.args.label_nosiy == True:
             self.prob_matrix = self.label_noise_matrix(seed=seed, class_num=class_num)
-            
+        
         # 3. missing label simulation
         if self.args.missing_label == True:
             missing_label_array = self.simulate_missing_label(seed=seed, size=len(data_dict))
@@ -113,7 +113,7 @@ class simulation_manager():
             if self.args.label_nosiy == True:
                 orginal_label = data_dict[idx][-1]
                 np.random.seed(seed)
-                new_label = np.random.choice(class_num, p=prob_matrix[orginal_label])
+                new_label = np.random.choice(class_num, p=self.prob_matrix[orginal_label])
             else:
                 new_label = data_dict[idx][-1]
             
