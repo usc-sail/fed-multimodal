@@ -86,5 +86,5 @@ python3 extract_audio_feature.py --feature_type mfcc --alpha ALPHA_VALUE_0_TO_1
 Now you should be able to the output folder with the following folders:
 
 feature  
-partition 
+partition
 simulation_feature
