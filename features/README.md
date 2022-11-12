@@ -21,7 +21,8 @@ cd data_partitioning/ufc101
 python3 data_partition.py --alpha ALPHA_VALUE_0_TO_1
 ```
 
-Each client's data follows the following format: [key, data_file, label]
+Each client's data follows the following format: 
+### [key, data_file, label]
 
 
 ## Step 2: Simulate Federated Features
@@ -54,7 +55,8 @@ cd simulation_features/ufc101
 python3 simulation_feature.py --alpha ALPHA_VALUE_0_TO_1 --en_missing_label --missing_label_rate VALUE_0_TO_1
 ```
 
-Each client's data follows the following format: [key, data_file, label, [MA_miss, MB_miss, label_with_noise, missing_label]]
+Each client's data follows the following format: 
+### [key, data_file, label, [MA_miss, MB_miss, label_with_noise, missing_label]]
 
 
 * MA_miss = 0, Modality A is not missing
