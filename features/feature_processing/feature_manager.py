@@ -41,18 +41,26 @@ class feature_manager():
     def extract_frame_features(self, 
                                video_id: str, 
                                label_str: str,
-                               max_len: int=-1) -> (float, int):
+                               max_len: int=-1,
+                               split=None) -> (float, int):
         """Extract the framewise feature from video streams."""
-        
-        rawframes = os.listdir(Path(self.args.raw_data_dir).joinpath('rawframes', label_str, video_id))
+        if split is None:
+            video_path = Path(self.args.raw_data_dir).joinpath('rawframes', label_str, video_id)
+        else: 
+            video_path = Path(self.args.raw_data_dir).joinpath('rawframes', split, label_str, video_id)
+
+        rawframes = os.listdir(video_path)
         rawframes.sort()
         if self.args.dataset == "ucf101":
             # downsample to 1 sec per frame
             rawframes = rawframes[::5]
+        elif self.args.dataset == "ucf51":
+            # downsample to every 10 frames
+            rawframes = rawframes[::2]
         
         input_data_list = list()
         for rawframe in rawframes:
-            rawframe_path = Path.joinpath(Path(self.args.raw_data_dir).joinpath('rawframes', label_str, video_id, rawframe))
+            rawframe_path = Path.joinpath(video_path.joinpath(rawframe))
             input_image = Image.open(rawframe_path)
             input_tensor = self.img_transform(input_image)
             input_data_list.append(input_tensor.detach().cpu().numpy())
