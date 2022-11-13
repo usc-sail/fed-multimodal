@@ -11,6 +11,8 @@ from PIL import Image
 from tqdm import tqdm
 from pathlib import Path
 from torchvision import models, transforms
+from transformers import BertTokenizer, BertModel
+from transformers import AlbertTokenizer, AlbertModel
 
 
 class feature_manager():
@@ -37,6 +39,14 @@ class feature_manager():
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ])
+        elif self.args.feature_type == "bert":
+            self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+            # Load pre-trained model (weights)
+            self.model = BertModel.from_pretrained("bert-base-uncased", output_hidden_states=True)
+        
+            # Put the model in "evaluation" mode, meaning feed-forward operation.
+            self.model = self.model.to(self.device)
+            self.model.eval()
             
     def extract_frame_features(self, 
                                video_id: str, 
@@ -74,7 +84,7 @@ class feature_manager():
     
     def extract_mfcc_features(self, 
                               audio_path: str, 
-                              label_str: str,
+                              label_str: str='',
                               frame_length: int=40,
                               frame_shift:  int=20,
                               max_len: int=-1) -> (float, int):
@@ -91,14 +101,30 @@ class feature_manager():
         if max_len != -1: features = features[:max_len]
         return features
     
-    def fetch_partition(self, fold_idx=1, alpha=0.5):
+    def fetch_partition(self, 
+                        fold_idx: int=1, 
+                        alpha: float=0.5):
         # reading partition
         alpha_str = str(alpha).replace('.', '')
         if self.args.dataset == "ucf101":
             partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'fold{fold_idx}', f'partition_alpha{alpha_str}.pkl')
         elif self.args.dataset == "mit51":
             partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'partition_alpha{alpha_str}.pkl')
+        elif self.args.dataset == "meld":
+            partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'partition.pkl')
         
         with open(str(partition_path), "rb") as f: 
             partition_dict = pickle.load(f)
         return partition_dict
+
+    def extract_text_feature(self, input_str: str) -> (np.array):
+        """
+        Extract features
+        :param input_str: input string
+        :return: return embeddings
+        """
+        with torch.no_grad():
+            inputs = self.tokenizer(input_str, return_tensors="pt").to(self.device)
+            outputs = self.model(**inputs)
+            features = outputs.last_hidden_state.detach().cpu().numpy()[0]
+        return features
