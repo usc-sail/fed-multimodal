@@ -194,21 +194,21 @@ if __name__ == '__main__':
     save_result_df = pd.DataFrame()
 
     # We perform 3 fold experiments
-    for fold_idx in range(3):
+    for fold_idx in range(1, 4):
         # load simulation feature
-        dm.load_sim_dict(fold_idx=fold_idx+1)
+        dm.load_sim_dict(fold_idx=fold_idx)
         # load all data
-        dm.load_full_audio_feat(fold_idx=fold_idx+1)
-        dm.load_full_video_feat(fold_idx=fold_idx+1)
+        dm.get_client_ids(fold_idx=fold_idx)
         # set dataloaders
         dataloader_dict = dict()
-        for client_id in dm.train_audio:
-            dataloader_dict[client_id] = dm.set_dataloader(client_id, shuffle=True)
-        dataloader_dict['dev'] = dm.set_dataloader('dev', shuffle=False)
-        dataloader_dict['test'] = dm.set_dataloader('test', shuffle=False)
+        for client_id in dm.client_ids:
+            audio_dict = dm.load_audio_feat(client_id=client_id)
+            video_dict = dm.load_video_feat(client_id=client_id)
+            shuffle = False if client_id in ['dev', 'test'] else True
+            dataloader_dict[client_id] = dm.set_dataloader(audio_dict, video_dict, shuffle=shuffle)
         
         # number of clients
-        num_of_clients, client_ids = len(dm.train_audio), list(dm.train_audio.keys())
+        num_of_clients, client_ids = len(dm.client_ids)-2, dm.client_ids[:-2]
         # set seeds
         set_seed(8)
         # loss function
@@ -221,7 +221,7 @@ if __name__ == '__main__':
 
         # initialize server
         server = Server(args, global_model, device=device, criterion=criterion)
-        server.initialize_log(fold_idx+1)
+        server.initialize_log(fold_idx)
         server.sample_clients(num_of_clients, sample_rate=args.sample_rate)
         
         # set seeds again
