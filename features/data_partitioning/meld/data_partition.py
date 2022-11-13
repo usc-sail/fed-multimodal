@@ -41,10 +41,10 @@ def data_partition(args: dict, split: str) -> (dict):
     df_label_cleaned['Filename'] = df_label_cleaned.apply(lambda row: f"dia{row.Dialogue_ID}_utt{row.Utterance_ID}", axis=1)
     df_label_cleaned['SeasondSpeaker'] = df_label_cleaned.apply(lambda row: f"season{row.Season}_utt{row.Speaker}", axis=1)
     
-    df_label_reduced = df_label_cleaned[['SeasondSpeaker', 'Filename', 'Path', 'Label']]
+    df_label_reduced = df_label_cleaned[['SeasondSpeaker', 'Filename', 'Path', 'Label', 'Utterance']]
     groups = df_label_reduced.groupby('SeasondSpeaker')
-    data_dict = {speaker: group[['Filename', 'Path', 'Label']].values.tolist()
-    for _, (speaker, group) in enumerate(groups) if len(group[['Filename', 'Path', 'Label']]) > 10}
+    data_dict = {speaker: group[['Filename', 'Path', 'Label', 'Utterance']].values.tolist()
+    for _, (speaker, group) in enumerate(groups) if len(group[['Filename', 'Path', 'Label', 'SeasondSpeaker', 'Utterance']]) > 10}
     
     for filter_speaker in ["All", "Man", "Policeman", "Tag", "Woman"]:
         if filter_speaker in data_dict: data_dict.pop(filter_speaker)
