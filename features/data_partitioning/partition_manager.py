@@ -50,6 +50,8 @@ class partition_manager():
             unique_labels = list(set([label for label, freq in top101_label_frequency]))
             unique_labels.sort()
             self.label_dict = {k: i for i, k in enumerate(unique_labels)}
+        elif self.args.dataset == "meld":
+            self.label_dict = {'neutral': 0, 'sadness': 1, 'joy': 2, 'anger': 3}
         
     def split_train_dev(self, train_val_file_id: list) -> (list, list):
         train_arr = np.arange(len(train_val_file_id))
