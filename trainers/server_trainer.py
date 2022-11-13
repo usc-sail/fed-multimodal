@@ -141,8 +141,8 @@ class Server(object):
             top5_acc = self.result_dict[self.epoch][data_split]['top5_acc']
 
         # loggin console
-        logging.info(f'Current Round {data_split} set : {self.epoch}')
-        logging.info(f'Loss: {loss:.3f}, Acc: {acc:.2f}, Top-5 Acc: {top5_acc:.2f}')
+        if data_split == 'train': logging.info(f'Current Round: {self.epoch}')
+        logging.info(f'{data_split} set, Loss: {loss:.3f}, Acc: {acc:.2f}, Top-5 Acc: {top5_acc:.2f}')
 
         # loggin to folder
         self.log_writer.add_scalar(f'Loss/{data_split}', loss, self.epoch)
