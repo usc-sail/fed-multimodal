@@ -129,10 +129,16 @@ class Server(object):
         return result_dict
 
     def log_result(self, data_split):
-        loss = self.result_dict[self.epoch][data_split]['loss']
-        acc = self.result_dict[self.epoch][data_split]['acc']
-        uar = self.result_dict[self.epoch][data_split]['uar']
-        top5_acc = self.result_dict[self.epoch][data_split]['top5_acc']
+        if data_split == 'train':
+            loss = np.mean([data['loss'] for data in self.result_dict[self.epoch][data_split]])
+            acc = np.mean([data['acc'] for data in self.result_dict[self.epoch][data_split]])
+            uar = np.mean([data['uar'] for data in self.result_dict[self.epoch][data_split]])
+            top5_acc = np.mean([data['top5_acc'] for data in self.result_dict[self.epoch][data_split]])
+        else:
+            loss = self.result_dict[self.epoch][data_split]['loss']
+            acc = self.result_dict[self.epoch][data_split]['acc']
+            uar = self.result_dict[self.epoch][data_split]['uar']
+            top5_acc = self.result_dict[self.epoch][data_split]['top5_acc']
 
         # loggin console
         logging.info(f'Current Round {data_split} set : {self.epoch}')
@@ -155,7 +161,7 @@ class Server(object):
         self.result_dict[self.epoch]['train'].append(result)
 
     def log_epoch_result(self, metric='acc'):
-        if self.epoch == 0: 
+        if self.epoch == 0:
             self.best_epoch = self.epoch
             self.best_dev_dict = self.result_dict[self.epoch]['dev']
             self.best_test_dict = self.result_dict[self.epoch]['test']
