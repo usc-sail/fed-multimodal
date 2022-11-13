@@ -82,22 +82,32 @@ class dataload_manager():
     def get_video_feat_path(self):
         self.video_feat_path = Path(self.args.data_dir).joinpath('feature', 'video', self.args.video_feat, self.args.dataset)
         return Path(self.video_feat_path)
+
+    def get_client_ids(self, fold_idx: int=1):
+        if self.args.dataset == "mit51":
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}')
+        elif self.args.dataset == "ucf101":
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}')
+        self.client_ids = [id.split('.pkl')[0] for id in os.listdir(str(data_path))]
+        self.client_ids.sort()
     
-    def load_audio_feat(self, fold_idx=1, split_type='train'):
+    def load_audio_feat(self, 
+                        client_id: str, 
+                        fold_idx: int=1) -> dict:
         if self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}', 
                                                       f'fold{fold_idx}', 
-                                                      f'{split_type}.pkl')
+                                                      f'{client_id}.pkl')
+        elif self.args.dataset == "mit51":
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}',
+                                                      f'{client_id}.pkl')
         
         with open(str(data_path), "rb") as f: 
             data_dict = pickle.load(f)
-            if split_type == 'train':
-                self.train_audio = pickle.load(f)
-            elif split_type == 'train':
-                self.train_audio = pickle.load(f)
-            elif split_type == 'train':
-                self.train_audio = pickle.load(f)
         return data_dict
     
     def load_full_audio_feat(self, fold_idx: int=1):
@@ -117,13 +127,17 @@ class dataload_manager():
 
 
     def load_video_feat(self, 
-                        fold_idx: int=1, 
-                        split_type: str='train') -> dict:
+                        client_id: str, 
+                        fold_idx: int=1) -> dict:
         if self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', 
                                                       f'fold{fold_idx}', 
-                                                      f'{split_type}.pkl')
+                                                      f'{client_id}.pkl')
+        elif self.args.dataset == "mit51":
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}',
+                                                      f'{client_id}.pkl')
 
         with open(str(data_path), "rb") as f: 
             data_dict = pickle.load(f)
@@ -135,7 +149,7 @@ class dataload_manager():
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}')
 
             with open(str(data_path.joinpath('train.pkl')), "rb") as f: 
-            self.train_video = pickle.load(f)
+                self.train_video = pickle.load(f)
             with open(str(data_path.joinpath('dev.pkl')), "rb") as f: 
                 self.dev_video = pickle.load(f)
             with open(str(data_path.joinpath('test.pkl')), "rb") as f: 
@@ -145,8 +159,6 @@ class dataload_manager():
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}')
         
-        
-
     def set_dataloader(self, client_id, shuffle=False):
         # read data
         if client_id == 'dev':
@@ -159,6 +171,27 @@ class dataload_manager():
             data_a = self.train_audio[client_id]
             data_b = self.train_video[client_id]
 
+        # modify data based on simulation
+        if self.sim_data is not None:
+            for idx in range(len(self.sim_data[client_id])):
+                # read simulate feature
+                sim_data = self.sim_data[client_id][idx][-1]
+                # read modality A
+                if read[0] == 1: data_a[idx][-1] = None
+                # read modality B
+                if read[1] == 1: data_b[idx][-1] = None
+                # label noise
+                data_a[idx][-2] = read[2]
+        
+        data_len = len(data_a)
+        data_ab = MMDatasetGenerator(data_a, data_b, data_len)
+        dataloader = DataLoader(data_ab, batch_size=int(self.args.batch_size), num_workers=0, shuffle=shuffle, collate_fn=collate_mm_fn_padd)
+        return dataloader
+
+    def set_dataloader(self, 
+                       data_a: dict, 
+                       data_b: dict, 
+                       shuffle: bool=False) -> (DataLoader):
         # modify data based on simulation
         if self.sim_data is not None:
             for idx in range(len(self.sim_data[client_id])):
