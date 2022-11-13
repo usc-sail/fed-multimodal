@@ -22,6 +22,8 @@ class simulation_manager():
         if self.args.dataset == "ucf101":
             alpha_str = str(alpha).replace('.', '')
             partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'fold{fold_idx}', f'partition_alpha{alpha_str}.pkl')
+        if self.args.dataset == "meld":
+            partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'partition.pkl')
         
         with open(str(partition_path), "rb") as f: 
             partition_dict = pickle.load(f)
@@ -111,11 +113,11 @@ class simulation_manager():
         for idx in range(len(data_dict)):
             # 2.1 simulate label noise
             if self.args.label_nosiy == True:
-                orginal_label = data_dict[idx][-1]
+                orginal_label = data_dict[idx][2]
                 np.random.seed(seed)
                 new_label = np.random.choice(class_num, p=self.prob_matrix[orginal_label])
             else:
-                new_label = data_dict[idx][-1]
+                new_label = data_dict[idx][2]
             
             # 2.2 simulate missing label
             if self.args.missing_label == True:
