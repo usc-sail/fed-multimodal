@@ -1,7 +1,7 @@
 # Author: Tiantian Feng
 # USC SAIL lab, tiantiaf@usc.edu
-import glob
 import pdb
+import glob
 import torch
 import random
 import pickle
@@ -73,6 +73,7 @@ if __name__ == '__main__':
     # extract data
     for client in tqdm(partition_dict):
         data_dict = partition_dict[client].copy()
+        if Path.exists(output_data_path.joinpath(f'{client}.pkl')) == True: continue
         for idx in range(len(partition_dict[client])):
             file_path = partition_dict[client][idx][1]
             video_id, _ = osp.splitext(osp.basename(file_path))

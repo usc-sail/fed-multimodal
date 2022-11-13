@@ -111,6 +111,10 @@ class dataload_manager():
                 self.dev_audio = pickle.load(f)
             with open(str(data_path.joinpath('test.pkl')), "rb") as f: 
                 self.test_audio = pickle.load(f)
+        elif self.args.dataset == "mit51":
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}')
+
 
     def load_video_feat(self, 
                         fold_idx: int=1, 
@@ -129,13 +133,19 @@ class dataload_manager():
         if self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}')
-        
+
             with open(str(data_path.joinpath('train.pkl')), "rb") as f: 
-                self.train_video = pickle.load(f)
+            self.train_video = pickle.load(f)
             with open(str(data_path.joinpath('dev.pkl')), "rb") as f: 
                 self.dev_video = pickle.load(f)
             with open(str(data_path.joinpath('test.pkl')), "rb") as f: 
                 self.test_video = pickle.load(f)
+
+        elif self.args.dataset == "mit51":
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}')
+        
+        
 
     def set_dataloader(self, client_id, shuffle=False):
         # read data
@@ -167,6 +177,11 @@ class dataload_manager():
         return dataloader
     
     def load_sim_dict(self, fold_idx=1):
+        """
+        Load simulation dictionary.
+        :param fold_idx: fold index
+        :return: None
+        """
         if self.setting_str == '': 
             self.sim_data = None
             return
@@ -175,6 +190,10 @@ class dataload_manager():
             data_path = Path(self.args.data_dir).joinpath('simulation_feature',
                                                           self.args.dataset, 
                                                           f'fold{fold_idx}', 
+                                                          f'{self.setting_str}.pkl')
+        elif self.args.dataset == "mit51":
+            data_path = Path(self.args.data_dir).joinpath('simulation_feature',
+                                                          self.args.dataset,
                                                           f'{self.setting_str}.pkl')
 
         with open(str(data_path), "rb") as f: 
