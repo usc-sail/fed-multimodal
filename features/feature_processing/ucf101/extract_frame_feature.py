@@ -90,22 +90,10 @@ if __name__ == '__main__':
     
         partition_dict = feature_manager.fetch_partition(fold_idx+1, alpha=args.alpha)
         for client in partition_dict:
+            save_dict = partition_dict[client]
             for idx in range(len(partition_dict[client])):
                 features = data_dict[partition_dict[client][idx][0]]
-                partition_dict[client][idx].append(features)
-
-        # save dev
-        with open(output_data_path.joinpath(f'dev.pkl'), 'wb') as handle:
-            pickle.dump(partition_dict['dev'], handle, protocol=pickle.HIGHEST_PROTOCOL)
-        
-        # save test
-        with open(output_data_path.joinpath(f'test.pkl'), 'wb') as handle:
-            pickle.dump(partition_dict['test'], handle, protocol=pickle.HIGHEST_PROTOCOL)
-        
-        # save train
-        partition_dict.pop('dev')
-        partition_dict.pop('test')
-        with open(output_data_path.joinpath(f'train.pkl'), 'wb') as handle:
-            pickle.dump(partition_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    
-    
+                save_dict[idx].append(features)
+            
+            with open(output_data_path.joinpath(f'{client}.pkl'), 'wb') as handle:
+                pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
