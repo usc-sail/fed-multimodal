@@ -86,9 +86,9 @@ class Client(object):
 
     def result_summary(self, truth_list, pred_list, top_k_list, loss_list):
         result_dict = dict()
-        result_dict['acc'] = accuracy_score(truth_list, pred_list)
-        result_dict['uar'] = recall_score(truth_list, pred_list, average="macro")
-        result_dict['top5_acc'] = np.sum(top_k_list == np.array(truth_list).reshape(len(truth_list), 1)) / len(truth_list)
+        result_dict['acc'] = accuracy_score(truth_list, pred_list)*100
+        result_dict['uar'] = recall_score(truth_list, pred_list, average="macro")*100
+        result_dict['top5_acc'] = (np.sum(top_k_list == np.array(truth_list).reshape(len(truth_list), 1)) / len(truth_list))*100
         result_dict['conf'] = np.round(confusion_matrix(truth_list, pred_list, normalize='true')*100, decimals=2)
         result_dict["loss"] = np.mean(loss_list)
         result_dict["sample"] = len(truth_list)
