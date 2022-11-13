@@ -65,7 +65,7 @@ if __name__ == '__main__':
     print('Total number of videos found: ', len(partition_dict.keys()))
     
     # extract data
-    for client in tqdm(list(partition_dict.keys())[100:500]):
+    for client in tqdm(list(partition_dict.keys())[500:]):
         data_dict = partition_dict[client].copy()
         split = 'validation' if client == 'test' else 'training'
         if Path.exists(output_data_path.joinpath(f'{client}.pkl')) == True: continue

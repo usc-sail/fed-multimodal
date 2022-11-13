@@ -60,12 +60,10 @@ class audio_video_classifier(nn.Module):
         )
 
         self.audio_proj = nn.Sequential(
-            # nn.BatchNorm1d(hidden_size*2),
             nn.Linear(hidden_size*2, 128)
         )
 
         self.video_proj = nn.Sequential(
-            # nn.BatchNorm1d(hidden_size*2),
             nn.Linear(hidden_size*2, 128)
         )
 
@@ -88,19 +86,12 @@ class audio_video_classifier(nn.Module):
         x_audio = x_audio.permute(0, 2, 1)
         
         x_audio, _ = self.audio_rnn(x_audio)
-        # x_audio = torch.mean(x_audio, dim=1)
         x_audio = x_audio[:, 0, :]
-        # x = self.bn(x)
 
         # video
         x_video = x_video.float()
-        x_video = x_video.permute(0, 2, 1)
-        # x_video = self.bn(x_video)
-        x_video = x_video.permute(0, 2, 1)
         x_video, _ = self.video_rnn(x_video)
-        # x_video = torch.mean(x_video, dim=1)
         x_video = x_video[:, 0, :]
-        # pdb.set_trace()
 
         # projection
         x_audio = self.audio_proj(x_audio)

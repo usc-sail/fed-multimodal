@@ -73,8 +73,8 @@ def parse_args():
     
     parser.add_argument(
         '--num_epochs', 
-        default=300,
-        type=str,
+        default=500,
+        type=int,
         help="total training rounds",
     )
     
