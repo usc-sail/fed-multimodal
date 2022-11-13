@@ -39,7 +39,7 @@ class Server(object):
         # Return model setting
         model_setting_str = 'alpha'+str(self.args.alpha).replace('.', '')
         model_setting_str += '_le'+str(self.args.local_epochs)
-        model_setting_str += '_lr' + str(self.args.learning_rate)[2:]
+        model_setting_str += '_lr' + str(self.args.learning_rate).replace('.', '')
         model_setting_str += '_bs'+str(self.args.batch_size)
         model_setting_str += '_sr'+str(self.args.sample_rate).replace('.', '')
         if self.args.missing_modality == True:

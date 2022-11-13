@@ -7,8 +7,9 @@ import argparse, logging
 import torch.multiprocessing
 import copy, time, pickle, shutil, sys, os, pdb
 
-from copy import deepcopy
+from tqdm import tqdm
 from pathlib import Path
+from copy import deepcopy
 
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'model'))
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'dataloader'))
@@ -59,7 +60,7 @@ def parse_args():
     parser.add_argument(
         '--learning_rate', 
         default=0.1,
-        type=str,
+        type=float,
         help="learning rate",
     )
     
@@ -205,19 +206,21 @@ if __name__ == '__main__':
 
     save_result_df = pd.DataFrame()
 
+    # load simulation feature
+    dm.load_sim_dict()
+    # load client ids
+    dm.get_client_ids()
+    # set dataloaders
+    dataloader_dict = dict()
+    logging.info('Reading Data')
+    for client_id in tqdm(dm.client_ids):
+        audio_dict = dm.load_audio_feat(client_id=client_id)
+        video_dict = dm.load_video_feat(client_id=client_id)
+        shuffle = False if client_id in ['dev', 'test'] else True
+        dataloader_dict[client_id] = dm.set_dataloader(audio_dict, video_dict, shuffle=shuffle)
+
     # We perform 5 fold experiments with 5 seeds
-    for fold_idx in range(1, 6):
-        # load simulation feature
-        dm.load_sim_dict()
-        dm.get_client_ids()
-        # set dataloaders
-        dataloader_dict = dict()
-        for client_id in dm.client_ids:
-            audio_dict = dm.load_audio_feat(client_id=client_id)
-            video_dict = dm.load_video_feat(client_id=client_id)
-            shuffle = False if client_id in ['dev', 'test'] else True
-            dataloader_dict[client_id] = dm.set_dataloader(audio_dict, video_dict, shuffle=shuffle)
-        
+    for fold_idx in range(1, 4):
         # number of clients
         num_of_clients, client_ids = len(dm.client_ids)-2, dm.client_ids[:-2]
         # set seeds
