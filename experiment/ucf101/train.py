@@ -247,6 +247,7 @@ if __name__ == '__main__':
             server.average_weights()
 
             logging.info('---------------------------------------------------------')
+            server.log_result(data_split='train')
             with torch.no_grad():
                 # 3. Perform the validation on dev set
                 server.inference(dataloader_dict['dev'])
