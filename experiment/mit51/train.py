@@ -34,7 +34,6 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description='FedMultimoda experiments')
     parser.add_argument(
@@ -59,23 +58,30 @@ def parse_args():
     
     parser.add_argument(
         '--learning_rate', 
-        default=0.05,
+        default=0.1,
         type=str,
         help="learning rate",
     )
     
     parser.add_argument(
         '--sample_rate', 
-        default=0.2,
+        default=0.05,
         type=float,
         help="client sample rate",
     )
     
     parser.add_argument(
         '--num_epochs', 
-        default=300,
+        default=500,
         type=str,
         help="total training rounds",
+    )
+
+    parser.add_argument(
+        '--test_frequency', 
+        default=10,
+        type=str,
+        help="perform test frequency",
     )
     
     parser.add_argument(
@@ -172,9 +178,15 @@ def parse_args():
         '--label_nosiy_level', 
         type=float, 
         default=0.1,
-        help='nosiy level for labels; 0.9 means 90% wrong')
+        help='nosiy level for labels; 0.9 means 90% wrong'
+    )
     
-    parser.add_argument("--dataset", default="ucf101")
+    parser.add_argument(
+        "--dataset", 
+        type=str, 
+        default="mit51",
+        help='data set name'
+    )
     args = parser.parse_args()
     return args
 
@@ -193,12 +205,11 @@ if __name__ == '__main__':
 
     save_result_df = pd.DataFrame()
 
-    # We perform 3 fold experiments
-    for fold_idx in range(1, 4):
+    # We perform 5 fold experiments with 5 seeds
+    for fold_idx in range(1, 6):
         # load simulation feature
-        dm.load_sim_dict(fold_idx=fold_idx)
-        # load all data
-        dm.get_client_ids(fold_idx=fold_idx)
+        dm.load_sim_dict()
+        dm.get_client_ids()
         # set dataloaders
         dataloader_dict = dict()
         for client_id in dm.client_ids:
@@ -210,13 +221,13 @@ if __name__ == '__main__':
         # number of clients
         num_of_clients, client_ids = len(dm.client_ids)-2, dm.client_ids[:-2]
         # set seeds
-        set_seed(8)
+        set_seed(8*fold_idx)
         # loss function
         criterion = nn.NLLLoss().to(device)
         # Define the model
         global_model = audio_video_classifier(num_classes=constants.num_class_dict[args.dataset],
-                                              audio_input_dim=constants.feature_len_dict["mfcc"], 
-                                              video_input_dim=constants.feature_len_dict["mobilenet_v2"])
+                                              audio_input_dim=constants.feature_len_dict[args.audio_feat], 
+                                              video_input_dim=constants.feature_len_dict[args.video_feat])
         global_model = global_model.to(device)
 
         # initialize server
@@ -225,7 +236,7 @@ if __name__ == '__main__':
         server.sample_clients(num_of_clients, sample_rate=args.sample_rate)
         
         # set seeds again
-        set_seed(8)
+        set_seed(8*fold_idx)
 
         # Training steps
         for epoch in range(int(args.num_epochs)):
@@ -245,22 +256,22 @@ if __name__ == '__main__':
             
             # 2. aggregate, load new global weights
             server.average_weights()
-
             logging.info('---------------------------------------------------------')
             server.log_result(data_split='train')
-            with torch.no_grad():
-                # 3. Perform the validation on dev set
-                server.inference(dataloader_dict['dev'])
-                server.result_dict[epoch]['dev'] = server.result
-                server.log_result(data_split='dev')
+            if epoch % args.test_frequency == 0:
+                with torch.no_grad():
+                    # 3. Perform the validation on dev set
+                    server.inference(dataloader_dict['dev'])
+                    server.result_dict[epoch]['dev'] = server.result
+                    server.log_result(data_split='dev')
 
-                # 4. Perform the test on holdout set
-                server.inference(dataloader_dict['test'])
-                server.result_dict[epoch]['test'] = server.result
-                server.log_result(data_split='test')
-            
-            logging.info('---------------------------------------------------------')
-            server.log_epoch_result(metric='acc')
+                    # 4. Perform the test on holdout set
+                    server.inference(dataloader_dict['test'])
+                    server.result_dict[epoch]['test'] = server.result
+                    server.log_result(data_split='test')
+                
+                logging.info('---------------------------------------------------------')
+                server.log_epoch_result(metric='acc')
             logging.info('---------------------------------------------------------')
 
         # Performance save code
