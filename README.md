@@ -3,7 +3,7 @@
 The framework figure:
 
 <div align="center">
- <img src="img/FedMultimodal.jpg" width="300px">
+ <img src="img/FedMultimodal.jpg" width="600px">
 </div>
 
 
