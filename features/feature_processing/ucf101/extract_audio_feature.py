@@ -58,7 +58,7 @@ if __name__ == '__main__':
     
     # initialize feature processer
     feature_manager = feature_manager(args)
-        
+
     if Path.exists(output_data_path.joinpath(f'feature.pkl')) == False:
     
         # fetch all files for processing
@@ -96,6 +96,7 @@ if __name__ == '__main__':
             for idx in range(len(partition_dict[client])):
                 features = data_dict[partition_dict[client][idx][0]]
                 save_dict[idx].append(features)
-
+            # very important: final feature output format
+            # [key, file_path, label, feature]
             with open(output_data_path.joinpath(f'{client}.pkl'), 'wb') as handle:
                 pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
