@@ -72,10 +72,14 @@ class dataload_manager():
     def __init__(self, args: dict):
         self.args = args
         # initialize paths
-        self.get_audio_feat_path()
         if self.args.dataset in ['ucf101', 'mit51', 'mit101']:
             self.get_video_feat_path()
-        
+        if self.args.dataset in ['ucf101', 'mit51', 'mit101', 'meld']:
+            self.get_audio_feat_path()
+        if self.args.dataset in ['uci-har']:
+            self.get_acc_feat_path()
+            self.get_gyro_feat_path()
+            
     def get_audio_feat_path(self):
         self.audio_feat_path = Path(self.args.data_dir).joinpath('feature', 'audio', self.args.audio_feat, self.args.dataset)
         return Path(self.audio_feat_path)
@@ -87,11 +91,22 @@ class dataload_manager():
     def get_text_feat_path(self):
         self.text_feat_path = Path(self.args.data_dir).joinpath('feature', 'text', self.args.text_feat, self.args.dataset)
         return Path(self.text_feat_path)
+    
+    def get_acc_feat_path(self):
+        self.acc_feat_path = Path(self.args.data_dir).joinpath('feature', 'acc', self.args.dataset)
+        return Path(self.acc_feat_path)
+    
+    def get_gyro_feat_path(self):
+        self.gyro_feat_path = Path(self.args.data_dir).joinpath('feature', 'gyro', self.args.dataset)
+        return Path(self.gyro_feat_path)
 
     def get_client_ids(self, fold_idx: int=1):
-        if self.args.dataset == "mit51":
+        if self.args.dataset in ["mit51"]:
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}')
+        if self.args.dataset in ["uci-har"]:
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.acc_feat_path.joinpath(f'alpha{alpha_str}')
         elif self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}')
@@ -100,18 +115,23 @@ class dataload_manager():
         self.client_ids = [id.split('.pkl')[0] for id in os.listdir(str(data_path))]
         self.client_ids.sort()
     
-    def load_audio_feat(self, 
-                        client_id: str, 
-                        fold_idx: int=1) -> dict:
+    def load_audio_feat(
+            self, 
+            client_id: str, 
+            fold_idx: int=1
+        ) -> dict:
+        """
+        Load audio feature data different applications.
+        :param client_id: client id
+        :param fold_idx: fold index
+        :return: data_dict: [key, path, label, feature_array]
+        """
         if self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}', 
-                                                      f'fold{fold_idx}', 
-                                                      f'{client_id}.pkl')
+            data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}', f'{client_id}.pkl')
         elif self.args.dataset == "mit51":
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}',
-                                                      f'{client_id}.pkl')
+            data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}', f'{client_id}.pkl')
         elif self.args.dataset == "meld":
             data_path = self.audio_feat_path.joinpath(f'{client_id}.pkl')
         
@@ -135,26 +155,73 @@ class dataload_manager():
             data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}')
 
 
-    def load_video_feat(self, 
-                        client_id: str, 
-                        fold_idx: int=1) -> dict:
+    def load_video_feat(
+            self, 
+            client_id: str, 
+            fold_idx: int=1
+        ) -> dict:
+        """
+        Load frame-wise video feature data for MMaction applications.
+        :param client_id: client id
+        :param fold_idx: fold index
+        :return: data_dict: [key, path, label, feature_array]
+        """
         if self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', 
-                                                      f'fold{fold_idx}', 
-                                                      f'{client_id}.pkl')
+            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}',  f'{client_id}.pkl')
         elif self.args.dataset == "mit51":
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}',
-                                                      f'{client_id}.pkl')
+            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'{client_id}.pkl')
 
         with open(str(data_path), "rb") as f: 
             data_dict = pickle.load(f)
         return data_dict
+    
+    def load_acc_feat(
+            self, 
+            client_id: str, 
+            fold_idx: int=1
+        ) -> dict:
+        """
+        Load acc feature data for HAR applications.
+        :param client_id: client id
+        :param fold_idx: fold index
+        :return: data_dict: [key, path, label, feature_array]
+        """
+        if self.args.dataset == "uci-har":
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.acc_feat_path.joinpath(f'alpha{alpha_str}', f'{client_id}.pkl')
+        with open(str(data_path), "rb") as f: data_dict = pickle.load(f)
+        return data_dict
+    
+    def load_gyro_feat(
+            self, 
+            client_id: str, 
+            fold_idx: int=1
+        ) -> dict:
+        """
+        Load gyro data for HAR application.
+        :param client_id: client id
+        :param fold_idx: fold index
+        :return: data_dict: [key, path, label, feature_array]
+        """
+        if self.args.dataset == "uci-har":
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.gyro_feat_path.joinpath(f'alpha{alpha_str}', f'{client_id}.pkl')
+        with open(str(data_path), "rb") as f: data_dict = pickle.load(f)
+        return data_dict
 
-    def load_text_feat(self, 
-                        client_id: str, 
-                        fold_idx: int=1) -> dict:
+    def load_text_feat(
+            self, 
+            client_id: str, 
+            fold_idx: int=1
+        ) -> dict:
+        """
+        Load text feature data.
+        :param client_id: client id
+        :param fold_idx: fold index
+        :return: data_dict: [key, path, label, feature_array]
+        """
         if self.args.dataset == "meld":
             data_path = self.text_feat_path.joinpath(f'{client_id}.pkl')
         with open(str(data_path), "rb") as f: 
@@ -203,13 +270,28 @@ class dataload_manager():
         
         data_len = len(data_a)
         data_ab = MMDatasetGenerator(data_a, data_b, data_len)
-        dataloader = DataLoader(data_ab, batch_size=int(self.args.batch_size), num_workers=0, shuffle=shuffle, collate_fn=collate_mm_fn_padd)
+        dataloader = DataLoader(
+            data_ab, 
+            batch_size=int(self.args.batch_size), 
+            num_workers=0, 
+            shuffle=shuffle, 
+            collate_fn=collate_mm_fn_padd
+        )
         return dataloader
 
-    def set_dataloader(self, 
-                       data_a: dict, 
-                       data_b: dict, 
-                       shuffle: bool=False) -> (DataLoader):
+    def set_dataloader(
+            self, 
+            data_a: dict,
+            data_b: dict, 
+            shuffle: bool=False
+        ) -> (DataLoader):
+        """
+        Set dataloader for training/dev/test.
+        :param data_a: modality A data
+        :param data_b: modality B data
+        :param shuffle: shuffle flag for dataloader, True for training; False for dev and test
+        :return: dataloader: torch dataloader
+        """
         # modify data based on simulation
         if self.sim_data is not None:
             for idx in range(len(self.sim_data[client_id])):
@@ -221,10 +303,25 @@ class dataload_manager():
                 if read[1] == 1: data_b[idx][-1] = None
                 # label noise
                 data_a[idx][-2] = read[2]
-        
-        data_len = len(data_a)
-        data_ab = MMDatasetGenerator(data_a, data_b, data_len)
-        dataloader = DataLoader(data_ab, batch_size=int(self.args.batch_size), num_workers=0, shuffle=shuffle, collate_fn=collate_mm_fn_padd)
+        data_ab = MMDatasetGenerator(data_a, data_b, len(data_a))
+        if shuffle:
+            # we use args input batch size for train, typically set as 16 in FL setup
+            dataloader = DataLoader(
+                data_ab, 
+                batch_size=int(self.args.batch_size), 
+                num_workers=0, 
+                shuffle=shuffle, 
+                collate_fn=collate_mm_fn_padd
+            )
+        else:
+            # we use a larger batch size for validation and testing
+            dataloader = DataLoader(
+                data_ab, 
+                batch_size=64, 
+                num_workers=0, 
+                shuffle=shuffle, 
+                collate_fn=collate_mm_fn_padd
+            )
         return dataloader
     
     def load_sim_dict(self, fold_idx: int=1):
@@ -242,7 +339,7 @@ class dataload_manager():
                                                           self.args.dataset, 
                                                           f'fold{fold_idx}', 
                                                           f'{self.setting_str}.pkl')
-        elif self.args.dataset in ["mit51", "meld"]:
+        elif self.args.dataset in ["mit51", "meld", "uci-har"]:
             data_path = Path(self.args.data_dir).joinpath('simulation_feature',
                                                           self.args.dataset,
                                                           f'{self.setting_str}.pkl')
@@ -251,6 +348,11 @@ class dataload_manager():
             self.sim_data = pickle.load(f)
     
     def get_simulation_setting(self, alpha=None):
+        """
+        Load get simulation setting string.
+        :param alpha: alpha in manual split
+        :return: None
+        """
         self.setting_str = ''
         if self.args.missing_modality == True:
             self.setting_str += 'mm'+str(self.args.missing_modailty_rate).replace('.', '')
