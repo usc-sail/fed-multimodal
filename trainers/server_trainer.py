@@ -37,8 +37,11 @@ class Server(object):
         
     def get_model_setting(self):
         # Return model setting
-        model_setting_str = 'alpha'+str(self.args.alpha).replace('.', '')
-        model_setting_str += '_le'+str(self.args.local_epochs)
+        if self.args.dataset in ['mit51', 'ucf101']:
+            model_setting_str = 'alpha'+str(self.args.alpha).replace('.', '')
+            model_setting_str += '_le'+str(self.args.local_epochs)
+        else:
+            model_setting_str = 'le'+str(self.args.local_epochs)
         model_setting_str += '_lr' + str(self.args.learning_rate).replace('.', '')
         model_setting_str += '_bs'+str(self.args.batch_size)
         model_setting_str += '_sr'+str(self.args.sample_rate).replace('.', '')
@@ -129,7 +132,7 @@ class Server(object):
         result_dict["sample"] = len(truth_list)
         return result_dict
 
-    def log_result(self, data_split):
+    def log_result(self, data_split: str, metric: str='uar'):
         if data_split == 'train':
             loss = np.mean([data['loss'] for data in self.result_dict[self.epoch][data_split]])
             acc = np.mean([data['acc'] for data in self.result_dict[self.epoch][data_split]])
@@ -143,7 +146,10 @@ class Server(object):
 
         # loggin console
         if data_split == 'train': logging.info(f'Current Round: {self.epoch}')
-        logging.info(f'{data_split} set, Loss: {loss:.3f}, Acc: {acc:.2f}, Top-5 Acc: {top5_acc:.2f}')
+        if metric == 'acc':
+            logging.info(f'{data_split} set, Loss: {loss:.3f}, Acc: {acc:.2f}, Top-5 Acc: {top5_acc:.2f}')
+        else:
+            logging.info(f'{data_split} set, Loss: {loss:.3f}, UAR: {uar:.2f}, Top-1 Acc: {acc:.2f}')
 
         # loggin to folder
         self.log_writer.add_scalar(f'Loss/{data_split}', loss, self.epoch)
@@ -186,8 +192,12 @@ class Server(object):
         
         # logging
         logging.info(f'Best epoch {self.best_epoch}')
-        logging.info(f'Best dev acc {best_dev_acc:.2f}%, top-5 acc {best_dev_top5_acc:.2f}%')
-        logging.info(f'Best test rec {best_test_acc:.2f}%, top-5 acc {best_test_top5_acc:.2f}%')
+        if metric == 'acc':
+            logging.info(f'Best dev acc {best_dev_acc:.2f}%, top-5 acc {best_dev_top5_acc:.2f}%')
+            logging.info(f'Best test rec {best_test_acc:.2f}%, top-5 acc {best_test_top5_acc:.2f}%')
+        else:
+            logging.info(f'Best dev uar {best_dev_uar:.2f}%, top-1 acc {best_dev_acc:.2f}%')
+            logging.info(f'Best test uar {best_test_uar:.2f}%, top-1 acc {best_test_acc:.2f}%')
 
     def summarize_results(self):
         row_df = pd.DataFrame(index=[f'fold{self.fold_idx}'])

@@ -103,30 +103,53 @@ class audio_video_classifier(nn.Module):
 
 
 class audio_text_classifier(nn.Module):
-    def __init__(self, num_classes, audio_input_dim, text_input_dim, prosody_dim, hidden_size=64, att=None):
+    def __init__(self, num_classes, audio_input_dim, text_input_dim, hidden_size=128, att=None):
         super(audio_text_classifier, self).__init__()
         self.dropout_p = 0.25
         
-        encoder_layer = nn.TransformerEncoderLayer(d_model=768, nhead=8, dim_feedforward=2048)
-        self.text_transformer = nn.TransformerEncoder(encoder_layer, num_layers=1)
-        self.audio_encoder = AudioEncoder(n_mels=80, n_ctx=250, n_state=512, n_head=8, n_layer=1)
+        self.audio_rnn = nn.GRU(input_size=128, hidden_size=hidden_size, 
+                                num_layers=1, batch_first=True, 
+                                dropout=self.dropout_p, bidirectional=True)
+
+        self.text_rnn = nn.GRU(input_size=text_input_dim, hidden_size=hidden_size, 
+                               num_layers=1, batch_first=True, 
+                               dropout=self.dropout_p, bidirectional=True)
+        
+        # conv module
+        self.audio_conv = nn.Sequential(
+            nn.Conv1d(audio_input_dim, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Dropout(self.dropout_p),
+            
+            nn.Conv1d(64, 96, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Dropout(self.dropout_p),
+
+            nn.Conv1d(96, 128, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Dropout(self.dropout_p),
+        )
+
         self.init_weight()
 
         # classifier head
         self.classifier = nn.Sequential(
             nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Dropout(self.dropout_p),
             nn.Linear(128, num_classes)
         )
 
         self.audio_proj = nn.Sequential(
-            nn.Linear(512, 128)
+            nn.Linear(hidden_size*2, 128)
         )
 
         self.text_proj = nn.Sequential(
-            nn.Linear(768, 128)
+            nn.Linear(hidden_size*2, 128)
         )
+
 
 
     def init_weight(self):
@@ -138,22 +161,21 @@ class audio_text_classifier(nn.Module):
                 torch.nn.init.xavier_uniform(m.weight)
                 m.bias.data.fill_(0.01)
 
-    def forward(self, x_audio, x_prosody, x_text):
+    def forward(self, x_audio, x_text):
         
         # audio
         x_audio = x_audio.float()
         x_audio = x_audio.permute(0, 2, 1)
-        x_audio = self.audio_encoder(x_audio)
-        # x_audio = x_audio[:, 0, :]
-        x_audio = torch.mean(x_audio, dim=1)
-        # pdb.set_trace()
-        
+        x_audio = self.audio_conv(x_audio)
+        x_audio = x_audio.permute(0, 2, 1)
+        x_audio, _ = self.audio_rnn(x_audio)
+        x_audio = x_audio[:, 0, :]
+
         # video
         x_text = x_text.float()
-        x_text = self.text_transformer(x_text)
-        # x_text = x_text[:, 0, :]
-        x_text = torch.mean(x_text, dim=1)
-        
+        x_text, _ = self.text_rnn(x_text)
+        x_text = x_text[:, 0, :]
+
         # projection
         x_audio = self.audio_proj(x_audio)
         x_text = self.text_proj(x_text)

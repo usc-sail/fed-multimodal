@@ -73,7 +73,8 @@ class dataload_manager():
         self.args = args
         # initialize paths
         self.get_audio_feat_path()
-        self.get_video_feat_path()
+        if self.args.dataset in ['ucf101', 'mit51', 'mit101']:
+            self.get_video_feat_path()
         
     def get_audio_feat_path(self):
         self.audio_feat_path = Path(self.args.data_dir).joinpath('feature', 'audio', self.args.audio_feat, self.args.dataset)
@@ -83,6 +84,10 @@ class dataload_manager():
         self.video_feat_path = Path(self.args.data_dir).joinpath('feature', 'video', self.args.video_feat, self.args.dataset)
         return Path(self.video_feat_path)
 
+    def get_text_feat_path(self):
+        self.text_feat_path = Path(self.args.data_dir).joinpath('feature', 'text', self.args.text_feat, self.args.dataset)
+        return Path(self.text_feat_path)
+
     def get_client_ids(self, fold_idx: int=1):
         if self.args.dataset == "mit51":
             alpha_str = str(self.args.alpha).replace('.', '')
@@ -90,6 +95,8 @@ class dataload_manager():
         elif self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}')
+        elif self.args.dataset == "meld":
+            data_path = self.text_feat_path
         self.client_ids = [id.split('.pkl')[0] for id in os.listdir(str(data_path))]
         self.client_ids.sort()
     
@@ -105,6 +112,8 @@ class dataload_manager():
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}',
                                                       f'{client_id}.pkl')
+        elif self.args.dataset == "meld":
+            data_path = self.audio_feat_path.joinpath(f'{client_id}.pkl')
         
         with open(str(data_path), "rb") as f: 
             data_dict = pickle.load(f)
@@ -139,6 +148,15 @@ class dataload_manager():
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}',
                                                       f'{client_id}.pkl')
 
+        with open(str(data_path), "rb") as f: 
+            data_dict = pickle.load(f)
+        return data_dict
+
+    def load_text_feat(self, 
+                        client_id: str, 
+                        fold_idx: int=1) -> dict:
+        if self.args.dataset == "meld":
+            data_path = self.text_feat_path.joinpath(f'{client_id}.pkl')
         with open(str(data_path), "rb") as f: 
             data_dict = pickle.load(f)
         return data_dict
@@ -209,7 +227,7 @@ class dataload_manager():
         dataloader = DataLoader(data_ab, batch_size=int(self.args.batch_size), num_workers=0, shuffle=shuffle, collate_fn=collate_mm_fn_padd)
         return dataloader
     
-    def load_sim_dict(self, fold_idx=1):
+    def load_sim_dict(self, fold_idx: int=1):
         """
         Load simulation dictionary.
         :param fold_idx: fold index
@@ -224,7 +242,7 @@ class dataload_manager():
                                                           self.args.dataset, 
                                                           f'fold{fold_idx}', 
                                                           f'{self.setting_str}.pkl')
-        elif self.args.dataset == "mit51":
+        elif self.args.dataset in ["mit51", "meld"]:
             data_path = Path(self.args.data_dir).joinpath('simulation_feature',
                                                           self.args.dataset,
                                                           f'{self.setting_str}.pkl')
