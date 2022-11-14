@@ -1,5 +1,5 @@
 # FedMultimodal
-### FedMutimodal is an open source project for researchers exploring multimodal applications in Federated Learning setup
+#### FedMutimodal is an open source project for researchers exploring multimodal applications in Federated Learning setup
 
 The framework figure:
 
