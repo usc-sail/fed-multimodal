@@ -1,6 +1,7 @@
 # Author: Tiantian Feng, USC SAIL lab, tiantiaf@usc.edu
 import pdb
 import glob
+import copy
 import torch
 import random
 import pickle
@@ -12,8 +13,8 @@ import numpy as np
 import os.path as osp
 
 
-from pathlib import Path
 from tqdm import tqdm
+from pathlib import Path
 
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[1])))
 from feature_manager import feature_manager
@@ -67,8 +68,8 @@ if __name__ == '__main__':
     
     # fetch all files for processing
     partition_dict = fm.fetch_partition(alpha=args.alpha)
-    acc_dict = partition_dict.copy()
-    gyro_dict = partition_dict.copy()
+    acc_dict = copy.deepcopy(partition_dict)
+    gyro_dict = copy.deepcopy(partition_dict)
     
     print('Reading data from folder: ', args.raw_data_dir)
     print('Total number of clients found: ', len(partition_dict.keys()))
@@ -99,24 +100,26 @@ if __name__ == '__main__':
             for idx in range(len(acc_dict[client_id])):
                 # pdb.set_trace()
                 # 0. initialize acc, gyro data
+                data_idx = acc_dict[client_id][idx][1]
                 acc_features, gyro_features = np.zeros([128, 3]), np.zeros([128, 3])
                 # 1.1 read acc data
-                acc_features[:, 0] = acc_x[idx, :]
-                acc_features[:, 1] = acc_y[idx, :]
-                acc_features[:, 2] = acc_z[idx, :]
+                acc_features[:, 0] = acc_x[data_idx, :]
+                acc_features[:, 1] = acc_y[data_idx, :]
+                acc_features[:, 2] = acc_z[data_idx, :]
                 # 1.2 normalize acc data
+                # pdb.set_trace()
                 mean, std = np.mean(acc_features, axis=0), np.std(acc_features, axis=0)
                 acc_features = (acc_features - mean) / (std + 1e-5)
-                acc_dict[client_id][idx].append(acc_features)
+                acc_dict[client_id][idx].append(copy.deepcopy(acc_features))
                 
                 # 2.1 read gyro data
-                gyro_features[:, 0] = gyro_x[idx, :]
-                gyro_features[:, 1] = gyro_y[idx, :]
-                gyro_features[:, 2] = gyro_z[idx, :]
+                gyro_features[:, 0] = gyro_x[data_idx, :]
+                gyro_features[:, 1] = gyro_y[data_idx, :]
+                gyro_features[:, 2] = gyro_z[data_idx, :]
                 # 2.2 normalize gyro data
                 mean, std = np.mean(gyro_features, axis=0), np.std(gyro_features, axis=0)
                 gyro_features = (gyro_features - mean) / (std + 1e-5)
-                gyro_dict[client_id][idx].append(gyro_features)
+                gyro_dict[client_id][idx].append(copy.deepcopy(gyro_features))
             # very important: final feature output format
             # [key, idx, label, feature]
             with open(acc_output_data_path.joinpath(f'{client_id}.pkl'), 'wb') as handle:

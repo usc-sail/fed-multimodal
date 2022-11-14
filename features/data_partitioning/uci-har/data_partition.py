@@ -55,15 +55,17 @@ def data_partition(args: dict):
         # data for each client
         for client_id in client_id_list:
             # return data idx belonging to the client
-            client_data_idx = np.where(client_id_data == client_id)[0]
-            client_data_dict = dict()
+            client_data_idx = list(np.where(client_id_data == client_id)[0])
+            client_data_idx.sort()
+            
             # read all file mapping => [key, idx (aka. File path), label]
-            for idx in client_data_idx:
-                label = int(labels[idx])
-                key = f'{client_id}/{idx}'
+            client_data_dict = dict()
+            for data_idx in client_data_idx:
+                label = int(labels[data_idx])
+                key = f'{client_id}/{data_idx}'
                 # test case, save directly, else post processing
-                if data_type == 'test': partition_dict['test'].append([client_id, idx, label])
-                else: client_data_dict[key] = [client_id, idx, label]
+                if data_type == 'test': partition_dict['test'].append([client_id, data_idx, label])
+                else: client_data_dict[key] = [client_id, data_idx, label]
             # test case do nothing
             if data_type == 'test': continue
             
@@ -80,7 +82,8 @@ def data_partition(args: dict):
             # each idx of the list contains the file list
             key_idx_clients = pm.direchlet_partition(label_list)
             for shard_idx in range(len(key_idx_clients)):
-                partition_dict[f'{client_id}-{shard_idx}'] = [client_data_dict[train_keys[key_idx]] for key_idx in key_idx_clients[shard_idx]]
+                key_idx_in_shard = key_idx_clients[shard_idx]
+                partition_dict[f'{client_id}-{shard_idx}'] = [client_data_dict[train_keys[key_idx]] for key_idx in key_idx_in_shard]
             for key in dev_keys:
                 partition_dict['dev'].append(client_data_dict[key])
         

@@ -45,9 +45,8 @@ class Server(object):
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
         else:
             model_setting_str = f'{self.args.audio_feat}_{self.args.text_feat}'
-            
         # training settings: local epochs, learning rate, batch size, client sample rate
-        model_setting_str = '_le'+str(self.args.local_epochs)
+        model_setting_str += '_le'+str(self.args.local_epochs)
         model_setting_str += '_lr' + str(self.args.learning_rate).replace('.', '')
         model_setting_str += '_bs'+str(self.args.batch_size)
         model_setting_str += '_sr'+str(self.args.sample_rate).replace('.', '')

@@ -191,48 +191,42 @@ class har_classifier(nn.Module):
         self.dropout_p = 0.25
         self.rnn_dropout = nn.Dropout(self.dropout_p)
 
-        self.acc_rnn = nn.GRU(input_size=128, hidden_size=hidden_size, 
+        self.acc_rnn = nn.GRU(input_size=64, hidden_size=hidden_size, 
                               num_layers=1, batch_first=True, 
                               dropout=self.dropout_p, bidirectional=True)
 
-        self.gyro_rnn = nn.GRU(input_size=128, hidden_size=hidden_size, 
+        self.gyro_rnn = nn.GRU(input_size=64, hidden_size=hidden_size, 
                                num_layers=1, batch_first=True, 
                                dropout=self.dropout_p, bidirectional=True)
 
         # conv module
         self.acc_conv = nn.Sequential(
-            nn.Conv1d(acc_input_dim, 64, kernel_size=5, padding=2),
+            nn.Conv1d(acc_input_dim, 32, kernel_size=5, padding=2),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Dropout(self.dropout_p),
             
-            nn.Conv1d(64, 96, kernel_size=5, padding=2),
+            nn.Conv1d(32, 48, kernel_size=5, padding=2),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Dropout(self.dropout_p),
 
-            nn.Conv1d(96, 128, kernel_size=5, padding=2),
+            nn.Conv1d(48, 64, kernel_size=5, padding=2),
             nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Dropout(self.dropout_p),
+            nn.MaxPool1d(kernel_size=2, stride=2)
         )
         
         # conv module
         self.gyro_conv = nn.Sequential(
-            nn.Conv1d(gyro_input_dim, 64, kernel_size=5, padding=2),
+            nn.Conv1d(gyro_input_dim, 32, kernel_size=5, padding=2),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Dropout(self.dropout_p),
             
-            nn.Conv1d(64, 96, kernel_size=5, padding=2),
+            nn.Conv1d(32, 48, kernel_size=5, padding=2),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Dropout(self.dropout_p),
 
-            nn.Conv1d(96, 128, kernel_size=5, padding=2),
+            nn.Conv1d(48, 64, kernel_size=5, padding=2),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Dropout(self.dropout_p),
         )
 
         self.init_weight()
@@ -284,7 +278,6 @@ class har_classifier(nn.Module):
         x_acc = self.acc_proj(x_acc)
         x_gyro = self.gyro_proj(x_gyro)
         x_mm = torch.concat((x_acc, x_gyro), dim=1)
-
         preds = self.classifier(x_mm)
         return preds
 
