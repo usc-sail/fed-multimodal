@@ -52,6 +52,15 @@ class partition_manager():
             self.label_dict = {k: i for i, k in enumerate(unique_labels)}
         elif self.args.dataset == "meld":
             self.label_dict = {'neutral': 0, 'sadness': 1, 'joy': 2, 'anger': 3}
+        elif self.args.dataset == 'extrasensory':
+            self.label_dict = {'label:LYING_DOWN': 0, 
+                               'label:SITTING': 1, 
+                               'label:FIX_walking': 2, 
+                               'label:FIX_running': 3, 
+                               'label:BICYCLING': 4, 
+                               'label:OR_standing': 5}
+        elif self.args.dataset == 'uci-har':
+            self.label_dict = {k: i for i, k in enumerate(np.arange(6))}
         
     def split_train_dev(self, train_val_file_id: list) -> (list, list):
         train_arr = np.arange(len(train_val_file_id))
@@ -84,4 +93,3 @@ class partition_manager():
                 file_idx_clients = [idx_j + idx.tolist() for idx_j,idx in zip(file_idx_clients,np.split(idx_k, proportions))]
                 min_size = min([len(idx_j) for idx_j in file_idx_clients])
         return file_idx_clients
-
