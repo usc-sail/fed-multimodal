@@ -19,7 +19,8 @@ from transformers import MobileBertTokenizer, MobileBertModel
 class feature_manager():
     def __init__(self, args: dict):
         self.args = args
-        self.initialize_feature_module()
+        if 'feature_type' in args:
+            self.initialize_feature_module()
         
     def initialize_feature_module(self):
         # load gpu or not
@@ -115,7 +116,7 @@ class feature_manager():
         alpha_str = str(alpha).replace('.', '')
         if self.args.dataset == "ucf101":
             partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'fold{fold_idx}', f'partition_alpha{alpha_str}.pkl')
-        elif self.args.dataset == "mit51":
+        elif self.args.dataset == "mit51" or self.args.dataset == 'uci-har':
             partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'partition_alpha{alpha_str}.pkl')
         elif self.args.dataset == "meld":
             partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'partition.pkl')
