@@ -25,7 +25,6 @@ MSP-Podcast | A+T(ASR) | [TAFFC'19](https://ecs.utdallas.edu/research/researchla
 
 Dataset | Modality | Paper | Num. of Clients | alpha | Best Top-1 Acc (Federated) | Best Top-5 Acc (Federated) | Learning rate | Global Epoch
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-UCF101 <br> | A+V <br> | [arxiv](https://arxiv.org/abs/1212.0402) <br> | 100 <br> | 1.0 <br> 0.5 <br> 0.1 | 70.20% <br> 69.26% <br> 66.63% | 93.66% <br> 93.56% <br> 92.13% |  <br> 0.05 <br> |  <br> 300 <br> 
-
+UCF101 <br> | A+V <br> | [arxiv](https://arxiv.org/abs/1212.0402) <br> | 100 <br> | 1.0 <br> 0.5 <br> 0.1 | 70.20% <br> 69.26% <br> 66.63% | 93.66% <br> 93.56% <br> 92.13% | 0.05 <br> | 300 <br> 
 MIT | A+V | [arxiv](https://arxiv.org/abs/1801.03150) | 1000 |
 
