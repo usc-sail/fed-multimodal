@@ -36,7 +36,7 @@ def parse_args():
 
     parser.add_argument(
         '--feature_type', 
-        default='bert',
+        default='mobilebert',
         type=str, 
         help='output feature name')
 

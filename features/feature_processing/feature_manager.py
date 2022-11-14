@@ -13,6 +13,7 @@ from pathlib import Path
 from torchvision import models, transforms
 from transformers import BertTokenizer, BertModel
 from transformers import AlbertTokenizer, AlbertModel
+from transformers import MobileBertTokenizer, MobileBertModel
 
 
 class feature_manager():
@@ -44,6 +45,12 @@ class feature_manager():
             # Load pre-trained model (weights)
             self.model = BertModel.from_pretrained("bert-base-uncased", output_hidden_states=True)
         
+            # Put the model in "evaluation" mode, meaning feed-forward operation.
+            self.model = self.model.to(self.device)
+            self.model.eval()
+        elif self.args.feature_type == "mobilebert":
+            self.tokenizer = MobileBertTokenizer.from_pretrained("google/mobilebert-uncased")
+            self.model = MobileBertModel.from_pretrained("google/mobilebert-uncased")
             # Put the model in "evaluation" mode, meaning feed-forward operation.
             self.model = self.model.to(self.device)
             self.model.eval()
