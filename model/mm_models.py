@@ -185,6 +185,109 @@ class audio_text_classifier(nn.Module):
         return preds
 
 
+class har_classifier(nn.Module):
+    def __init__(self, num_classes, acc_input_dim, gyro_input_dim, hidden_size=64):
+        super(har_classifier, self).__init__()
+        self.dropout_p = 0.25
+        self.rnn_dropout = nn.Dropout(self.dropout_p)
+
+        self.acc_rnn = nn.GRU(input_size=128, hidden_size=hidden_size, 
+                              num_layers=1, batch_first=True, 
+                              dropout=self.dropout_p, bidirectional=True)
+
+        self.gyro_rnn = nn.GRU(input_size=128, hidden_size=hidden_size, 
+                               num_layers=1, batch_first=True, 
+                               dropout=self.dropout_p, bidirectional=True)
+
+        # conv module
+        self.acc_conv = nn.Sequential(
+            nn.Conv1d(acc_input_dim, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Dropout(self.dropout_p),
+            
+            nn.Conv1d(64, 96, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Dropout(self.dropout_p),
+
+            nn.Conv1d(96, 128, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Dropout(self.dropout_p),
+        )
+        
+        # conv module
+        self.gyro_conv = nn.Sequential(
+            nn.Conv1d(gyro_input_dim, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Dropout(self.dropout_p),
+            
+            nn.Conv1d(64, 96, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Dropout(self.dropout_p),
+
+            nn.Conv1d(96, 128, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Dropout(self.dropout_p),
+        )
+
+        self.init_weight()
+
+        # classifier head
+        self.classifier = nn.Sequential(
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_classes)
+        )
+
+        self.acc_proj = nn.Sequential(
+            nn.Linear(hidden_size*2, 64)
+        )
+
+        self.gyro_proj = nn.Sequential(
+            nn.Linear(hidden_size*2, 64)
+        )
+
+
+    def init_weight(self):
+        for m in self._modules:
+            if type(m) == nn.Linear:
+                torch.nn.init.xavier_uniform(m.weight)
+                m.bias.data.fill_(0.01)
+            if type(m) == nn.Conv1d:
+                torch.nn.init.xavier_uniform(m.weight)
+                m.bias.data.fill_(0.01)
+
+    def forward(self, x_acc, x_gyro):
+        
+        # acc
+        x_acc = x_acc.float()
+        x_acc = x_acc.permute(0, 2, 1)
+        x_acc = self.acc_conv(x_acc)
+        x_acc = x_acc.permute(0, 2, 1)
+        x_acc, _ = self.acc_rnn(x_acc)
+        x_acc = torch.mean(x_acc, dim=1)
+
+        # gyro
+        x_gyro = x_gyro.float()
+        x_gyro = x_gyro.permute(0, 2, 1)
+        x_gyro = self.gyro_conv(x_gyro)
+        x_gyro = x_gyro.permute(0, 2, 1)
+        x_gyro, _ = self.gyro_rnn(x_gyro)
+        x_gyro = torch.mean(x_gyro, dim=1)
+
+        # projection
+        x_acc = self.acc_proj(x_acc)
+        x_gyro = self.gyro_proj(x_gyro)
+        x_mm = torch.concat((x_acc, x_gyro), dim=1)
+
+        preds = self.classifier(x_mm)
+        return preds
+
 class LayerNorm(nn.LayerNorm):
     def forward(self, x: Tensor) -> Tensor:
         return super().forward(x.float()).type(x.dtype)
