@@ -40,12 +40,19 @@ class Server(object):
         if self.args.dataset in ['mit51', 'ucf101']:
             model_setting_str = f'{self.args.audio_feat}_{self.args.video_feat}'
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
+        elif self.args.dataset in ['uci-har']:
+            model_setting_str = f'{self.args.acc_feat}_{self.args.gyro_feat}'
+            model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
         else:
             model_setting_str = f'{self.args.audio_feat}_{self.args.text_feat}'
+            
+        # training settings: local epochs, learning rate, batch size, client sample rate
         model_setting_str = '_le'+str(self.args.local_epochs)
         model_setting_str += '_lr' + str(self.args.learning_rate).replace('.', '')
         model_setting_str += '_bs'+str(self.args.batch_size)
         model_setting_str += '_sr'+str(self.args.sample_rate).replace('.', '')
+        
+        # FL simulations: missing modality, label noise, missing labels
         if self.args.missing_modality == True:
             model_setting_str += '_mm'+str(self.args.missing_modailty_rate).replace('.', '')
         if self.args.label_nosiy == True:

@@ -60,7 +60,7 @@ class Client(object):
                 if x_a[0] is not None: x_a = x_a.to(self.device)
                 if x_b[0] is not None: x_b = x_b.to(self.device)
                 y = y.to(self.device)
-                
+                # pdb.set_trace()
                 # forward
                 outputs = self.model(x_a.float(), x_b.float())
                 outputs = torch.log_softmax(outputs, dim=1)
