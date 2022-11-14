@@ -109,13 +109,17 @@ class feature_manager():
         if max_len != -1: features = features[:max_len]
         return features
     
-    def fetch_partition(self, 
-                        fold_idx: int=1, 
-                        alpha: float=0.5):
+    def fetch_partition(
+            self, 
+            fold_idx: int=1, 
+            alpha: float=0.5
+        ):
         # reading partition
         alpha_str = str(alpha).replace('.', '')
         if self.args.dataset == "ucf101":
             partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'fold{fold_idx}', f'partition_alpha{alpha_str}.pkl')
+        elif self.args.dataset == "extrasensory":
+            partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'fold{fold_idx}', f'partition.pkl')
         elif self.args.dataset == "mit51" or self.args.dataset == 'uci-har':
             partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'partition_alpha{alpha_str}.pkl')
         elif self.args.dataset == "meld":
