@@ -15,9 +15,9 @@ from typing import Iterable, Optional
 import numpy as np
 
 
-class audio_video_classifier(nn.Module):
+class MMactionClassifier(nn.Module):
     def __init__(self, num_classes, audio_input_dim, video_input_dim, hidden_size=128):
-        super(audio_video_classifier, self).__init__()
+        super(MMactionClassifier, self).__init__()
         self.dropout_p = 0.25
         self.rnn_dropout = nn.Dropout(self.dropout_p)
 
@@ -46,9 +46,6 @@ class audio_video_classifier(nn.Module):
             nn.MaxPool1d(kernel_size=2, stride=2),
             nn.Dropout(self.dropout_p),
         )
-
-        self.bn = nn.BatchNorm1d(video_input_dim)
-        self.bn1 = nn.BatchNorm1d(hidden_size*2)
 
         self.init_weight()
 
@@ -102,9 +99,9 @@ class audio_video_classifier(nn.Module):
         return preds
 
 
-class audio_text_classifier(nn.Module):
+class SERClassifier(nn.Module):
     def __init__(self, num_classes, audio_input_dim, text_input_dim, hidden_size=128, att=None):
-        super(audio_text_classifier, self).__init__()
+        super(SERClassifier, self).__init__()
         self.dropout_p = 0.25
         
         self.audio_rnn = nn.GRU(input_size=128, hidden_size=hidden_size, 
@@ -185,55 +182,57 @@ class audio_text_classifier(nn.Module):
         return preds
 
 
-class har_classifier(nn.Module):
-    def __init__(self, num_classes, acc_input_dim, gyro_input_dim, hidden_size=64):
-        super(har_classifier, self).__init__()
-        self.dropout_p = 0.25
-        self.rnn_dropout = nn.Dropout(self.dropout_p)
-
-        self.acc_rnn = nn.GRU(input_size=128, hidden_size=hidden_size, 
-                              num_layers=1, batch_first=True, 
-                              dropout=self.dropout_p, bidirectional=True)
-
-        self.gyro_rnn = nn.GRU(input_size=128, hidden_size=hidden_size, 
-                               num_layers=1, batch_first=True, 
-                               dropout=self.dropout_p, bidirectional=True)
-
-        # conv module
-        self.acc_conv = nn.Sequential(
-            nn.Conv1d(acc_input_dim, 64, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2, stride=2),
-            
-            nn.Conv1d(64, 96, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2, stride=2),
-
-            nn.Conv1d(96, 128, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Dropout(self.dropout_p)
+class HARClassifier(nn.Module):
+    def __init__(
+        self, 
+        num_classes: int,       # Number of classes 
+        acc_input_dim: int,     # Acc data input dim
+        gyro_input_dim: int,    # Acc data input dim
+        d_hid: int=64,          # Hidden Layer size
+        en_att: bool=False      # Enable self attention or not
+    ):
+        super(HARClassifier, self).__init__()
+        self.dropout_p = 0.1
+        self.en_att = en_att
+        
+        # Conv Encoder module
+        self.acc_conv = Conv1dEncoder(
+            input_dim=acc_input_dim, 
+            n_filters=32, 
+            dropout=self.dropout_p, 
         )
         
-        # conv module
-        self.gyro_conv = nn.Sequential(
-            nn.Conv1d(gyro_input_dim, 64, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2, stride=2),
-            
-            nn.Conv1d(64, 96, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2, stride=2),
-
-            nn.Conv1d(96, 128, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Dropout(self.dropout_p)
+        self.gyro_conv = Conv1dEncoder(
+            input_dim=acc_input_dim, 
+            n_filters=32, 
+            dropout=self.dropout_p, 
+        )
+        
+        # RNN module
+        self.acc_rnn = nn.GRU(
+            input_size=128, 
+            hidden_size=d_hid, 
+            num_layers=1, 
+            batch_first=True, 
+            dropout=self.dropout_p, 
+            bidirectional=True
         )
 
+        self.gyro_rnn = nn.GRU(
+            input_size=128, 
+            hidden_size=d_hid, 
+            num_layers=1, 
+            batch_first=True, 
+            dropout=self.dropout_p, 
+            bidirectional=True
+        )
+
+        # Self attention module
+        self.acc_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=8)
+        self.gyro_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=8)
         self.init_weight()
 
-        # classifier head
+        # Classifier head
         self.classifier = nn.Sequential(
             nn.Linear(128, 64),
             nn.ReLU(),
@@ -259,30 +258,95 @@ class har_classifier(nn.Module):
                 m.bias.data.fill_(0.01)
 
     def forward(self, x_acc, x_gyro):
-        
-        # acc
-        x_acc = x_acc.float()
-        x_acc = x_acc.permute(0, 2, 1)
+        # 1. Conv forward
         x_acc = self.acc_conv(x_acc)
-        x_acc = x_acc.permute(0, 2, 1)
-        x_acc, _ = self.acc_rnn(x_acc)
-        x_acc = torch.mean(x_acc, dim=1)
-
-        # gyro
-        x_gyro = x_gyro.float()
-        x_gyro = x_gyro.permute(0, 2, 1)
         x_gyro = self.gyro_conv(x_gyro)
-        x_gyro = x_gyro.permute(0, 2, 1)
+        # 2. Rnn forward
+        x_acc, _ = self.acc_rnn(x_acc)
         x_gyro, _ = self.gyro_rnn(x_gyro)
-        x_gyro = torch.mean(x_gyro, dim=1)
-
-        # projection
+        # 3. Attention
+        if self.en_att:
+            x_acc = self.acc_att(x_acc)
+            x_gyro = self.gyro_att(x_gyro)
+        # 4. Average pooling
+        x_acc = torch.mean(x_acc, axis=1)
+        x_gyro = torch.mean(x_gyro, axis=1)
+        # 5. Projection
         x_acc = self.acc_proj(x_acc)
         x_gyro = self.gyro_proj(x_gyro)
+        # 6. MM embedding and predict
         x_mm = torch.concat((x_acc, x_gyro), dim=1)
         preds = self.classifier(x_mm)
         return preds
 
+
+class Conv1dEncoder(nn.Module):
+    def __init__(
+        self,
+        input_dim: int, 
+        n_filters: int,
+        dropout: float=0.1
+    ):
+        super().__init__()
+        # conv module
+        self.conv1 = nn.Conv1d(input_dim, n_filters, kernel_size=5, padding=2)
+        self.conv2 = nn.Conv1d(n_filters, n_filters*2, kernel_size=5, padding=2)
+        self.conv3 = nn.Conv1d(n_filters*2, n_filters*4, kernel_size=5, padding=2)
+        self.relu = nn.ReLU()
+        self.pooling = nn.MaxPool1d(kernel_size=2, stride=2)
+        self.dropout = nn.Dropout(dropout)
+        
+    def forward(
+            self,
+            x: Tensor   # shape => [batch_size (B), num_data (T), feature_dim (D)]
+        ):
+        x = x.float()
+        x = x.permute(0, 2, 1)
+        # conv1
+        x = self.conv1(x)
+        x = self.relu(x)
+        x = self.pooling(x)
+        x = self.dropout(x)
+        # conv2
+        x = self.conv2(x)
+        x = self.relu(x)
+        x = self.pooling(x)
+        x = self.dropout(x)
+        # conv3
+        x = self.conv3(x)
+        x = self.relu(x)
+        x = self.pooling(x)
+        x = self.dropout(x)
+        x = x.permute(0, 2, 1)
+        return x
+
+class SelfAttention(nn.Module):
+    def __init__(
+        self, 
+        d_hid: int, 
+        d_att: int, 
+        n_head: int
+    ):
+        super().__init__()
+        self.att_linear1 = nn.Linear(d_hid*2, d_att)
+        self.att_pool = nn.Tanh()
+        self.att_linear2 = nn.Linear(d_att, n_head)
+        
+        self.att_mat1 = torch.nn.Parameter(torch.rand(d_att, d_hid*2), requires_grad=True)
+        self.att_mat2 = torch.nn.Parameter(torch.rand(n_head, d_att), requires_grad=True)
+
+    def forward(
+        self,
+        x: Tensor
+    ):
+        att = self.att_linear1(x)
+        att = self.att_pool(att)
+        att = self.att_linear2(att)
+        att = att.transpose(1, 2)
+        att = torch.softmax(att, dim=2)
+        x = torch.matmul(att, x)
+        return x
+        
 class LayerNorm(nn.LayerNorm):
     def forward(self, x: Tensor) -> Tensor:
         return super().forward(x.float()).type(x.dtype)
