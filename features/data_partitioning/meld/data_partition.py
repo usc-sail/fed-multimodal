@@ -12,10 +12,16 @@ sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[1])))
 from partition_manager import partition_manager
 
 
-def data_partition(args: dict, split: str) -> (dict):
+def data_partition(
+        args: dict, 
+        split: str 
+    ) -> (dict):
     """
     Gets wav data dict and the number of unique classes for task.
     :param args: argument input
+    :param split: train/dev/test
+    return: data_dict => 
+            {speaker_id: [[speaker_id, wav_file_name, wav_file_path, label, text_data], ...]}
     """
     if split == 'train':
         label_path = f'{args.raw_data_dir}/train_sent_emo.csv'
