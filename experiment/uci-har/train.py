@@ -213,7 +213,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     # data manager
-    dm = dataload_manager(args)
+    dm = DataloadManager(args)
     dm.get_simulation_setting(alpha=args.alpha)
     
     # find device

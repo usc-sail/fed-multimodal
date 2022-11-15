@@ -281,16 +281,25 @@ if __name__ == '__main__':
             server.average_weights()
 
             logging.info('---------------------------------------------------------')
-            server.log_result(data_split='train')
+            server.log_result(
+                data_split='train', 
+                metric='acc'
+            )
             with torch.no_grad():
                 # 3. Perform the validation on dev set
                 server.inference(dataloader_dict['dev'])
                 server.result_dict[epoch]['dev'] = server.result
-                server.log_result(data_split='dev')
+                server.log_result(
+                    data_split='dev', 
+                    metric='acc'
+                )
                 # 4. Perform the test on holdout set
                 server.inference(dataloader_dict['test'])
                 server.result_dict[epoch]['test'] = server.result
-                server.log_result(data_split='test')
+                server.log_result(
+                    data_split='test', 
+                    metric='acc'
+                )
             
             logging.info('---------------------------------------------------------')
             server.log_epoch_result(metric='acc')
