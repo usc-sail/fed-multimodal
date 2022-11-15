@@ -187,7 +187,8 @@ def parse_args():
         '--label_nosiy_level', 
         type=float, 
         default=0.1,
-        help='nosiy level for labels; 0.9 means 90% wrong')
+        help='nosiy level for labels; 0.9 means 90% wrong'
+    )
     
     parser.add_argument("--dataset", default="ucf101")
     args = parser.parse_args()
@@ -218,8 +219,14 @@ if __name__ == '__main__':
         dataloader_dict = dict()
         logging.info('Loading Data')
         for client_id in tqdm(dm.client_ids):
-            audio_dict = dm.load_audio_feat(client_id=client_id)
-            video_dict = dm.load_video_feat(client_id=client_id)
+            audio_dict = dm.load_audio_feat(
+                client_id=client_id, 
+                fold_idx=fold_idx
+            )
+            video_dict = dm.load_video_feat(
+                client_id=client_id, 
+                fold_idx=fold_idx
+            )
             shuffle = False if client_id in ['dev', 'test'] else True
             dataloader_dict[client_id] = dm.set_dataloader(audio_dict, video_dict, shuffle=shuffle)
         
@@ -258,7 +265,13 @@ if __name__ == '__main__':
                 client_id = client_ids[idx]
                 dataloader = dataloader_dict[client_id]
                 # initialize client object
-                client = Client(args, device, criterion, dataloader, copy.deepcopy(server.global_model))
+                client = Client(
+                    args, 
+                    device, 
+                    criterion, 
+                    dataloader, 
+                    copy.deepcopy(server.global_model)
+                )
                 client.update_weights()
                 # server append updates
                 server.save_train_updates(copy.deepcopy(client.get_parameters()), client.result['sample'], client.result)
@@ -274,7 +287,6 @@ if __name__ == '__main__':
                 server.inference(dataloader_dict['dev'])
                 server.result_dict[epoch]['dev'] = server.result
                 server.log_result(data_split='dev')
-
                 # 4. Perform the test on holdout set
                 server.inference(dataloader_dict['test'])
                 server.result_dict[epoch]['test'] = server.result
