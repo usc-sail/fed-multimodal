@@ -100,36 +100,49 @@ class MMactionClassifier(nn.Module):
 
 
 class SERClassifier(nn.Module):
-    def __init__(self, num_classes, audio_input_dim, text_input_dim, hidden_size=128, att=None):
+    def __init__(
+        self, 
+        num_classes: int,       # Number of classes 
+        audio_input_dim: int,   # Audio data input dim
+        text_input_dim: int,    # Text data input dim
+        d_hid: int=64,          # Hidden Layer size
+        en_att: bool=False      # Enable self attention or not
+    ):
         super(SERClassifier, self).__init__()
-        self.dropout_p = 0.25
+        self.dropout_p = 0.1
         
-        self.audio_rnn = nn.GRU(input_size=128, hidden_size=hidden_size, 
-                                num_layers=1, batch_first=True, 
-                                dropout=self.dropout_p, bidirectional=True)
-
-        self.text_rnn = nn.GRU(input_size=text_input_dim, hidden_size=hidden_size, 
-                               num_layers=1, batch_first=True, 
-                               dropout=self.dropout_p, bidirectional=True)
+        # Conv Encoder module
+        self.acc_conv = Conv1dEncoder(
+            input_dim=acc_input_dim, 
+            n_filters=32, 
+            dropout=self.dropout_p, 
+        )
         
-        # conv module
-        self.audio_conv = nn.Sequential(
-            nn.Conv1d(audio_input_dim, 64, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Dropout(self.dropout_p),
-            
-            nn.Conv1d(64, 96, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Dropout(self.dropout_p),
-
-            nn.Conv1d(96, 128, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Dropout(self.dropout_p),
+        # RNN module
+        self.audio_rnn = nn.GRU(
+            input_size=128, 
+            hidden_size=hidden_size, 
+            num_layers=1, 
+            batch_first=True, 
+            dropout=self.dropout_p, 
+            bidirectional=True
         )
 
+        self.text_rnn = nn.GRU(
+            input_size=text_input_dim, 
+            hidden_size=hidden_size, 
+            num_layers=1, 
+            batch_first=True, 
+            dropout=self.dropout_p, 
+            bidirectional=True
+        )
+        # Self attention module
+        self.audio_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
+        self.text_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
+        
+        # Projection head
+        self.audio_proj = nn.Linear(hidden_size*2, 128)
+        self.text_proj = nn.Linear(hidden_size*2, 128)
         self.init_weight()
 
         # classifier head
@@ -138,17 +151,7 @@ class SERClassifier(nn.Module):
             nn.ReLU(),
             nn.Linear(128, num_classes)
         )
-
-        self.audio_proj = nn.Sequential(
-            nn.Linear(hidden_size*2, 128)
-        )
-
-        self.text_proj = nn.Sequential(
-            nn.Linear(hidden_size*2, 128)
-        )
-
-
-
+        
     def init_weight(self):
         for m in self._modules:
             if type(m) == nn.Linear:
@@ -159,25 +162,23 @@ class SERClassifier(nn.Module):
                 m.bias.data.fill_(0.01)
 
     def forward(self, x_audio, x_text):
-        
-        # audio
-        x_audio = x_audio.float()
-        x_audio = x_audio.permute(0, 2, 1)
+        # 1. Conv forward
         x_audio = self.audio_conv(x_audio)
-        x_audio = x_audio.permute(0, 2, 1)
+        # 2. Rnn forward
         x_audio, _ = self.audio_rnn(x_audio)
-        x_audio = x_audio[:, 0, :]
-
-        # video
-        x_text = x_text.float()
         x_text, _ = self.text_rnn(x_text)
-        x_text = x_text[:, 0, :]
-
-        # projection
+        # 3. Attention
+        if self.en_att:
+            x_audio = self.acc_att(x_audio)
+            x_text = self.text_att(x_text)
+        # 4. Average pooling
+        x_audio = torch.mean(x_audio, axis=1)
+        x_text = torch.mean(x_text, axis=1)
+        # 5. Projection
         x_audio = self.audio_proj(x_audio)
         x_text = self.text_proj(x_text)
+        # 6. MM embedding and predict
         x_mm = torch.concat((x_audio, x_text), dim=1)
-
         preds = self.classifier(x_mm)
         return preds
 
@@ -318,9 +319,9 @@ class Conv1dEncoder(nn.Module):
 class SelfAttention(nn.Module):
     def __init__(
         self, 
-        d_hid: int, 
-        d_att: int, 
-        n_head: int
+        d_hid:  int=64, 
+        d_att:  int=512, 
+        n_head: int=8
     ):
         super().__init__()
         self.att_linear1 = nn.Linear(d_hid*2, d_att)
