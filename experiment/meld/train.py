@@ -17,14 +17,19 @@ sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), '
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'constants'))
 
 import constants
-from dataload_manager import dataload_manager
-from mm_models import audio_text_classifier
 from client_trainer import Client
 from server_trainer import Server
+from mm_models import SERClassifier
+from dataload_manager import DataloadManager
+
 
 # define logging console
 import logging
-logging.basicConfig(format='%(asctime)s %(levelname)-3s ==> %(message)s', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
+    level=logging.INFO, 
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 
 def set_seed(seed):
@@ -55,6 +60,19 @@ def parse_args():
         default='mobilebert',
         type=str,
         help="text embedding feature name",
+    )
+    
+    parser.add_argument(
+        '--att', 
+        type=bool, 
+        default=False,
+        help='self attention applied or not')
+    
+    parser.add_argument(
+        "--en_att",
+        dest='att',
+        action='store_true',
+        help="enable self-attention"
     )
     
     parser.add_argument(
@@ -190,7 +208,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     # data manager
-    dm = dataload_manager(args)
+    dm = DataloadManager(args)
     dm.get_text_feat_path()
     dm.get_simulation_setting()
     
@@ -216,15 +234,20 @@ if __name__ == '__main__':
     # We perform 5 fold experiments with 5 seeds
     for fold_idx in range(1, 4):
         # number of clients
-        num_of_clients, client_ids = len(dm.client_ids)-2, dm.client_ids[:-2]
+        client_ids = [client_id for client_id in dm.client_ids if client_id not in ['dev', 'test']]
+        num_of_clients = len(client_ids)
         # set seeds
         set_seed(8*fold_idx)
         # loss function
         criterion = nn.NLLLoss().to(device)
         # Define the model
-        global_model = audio_text_classifier(num_classes=constants.num_class_dict[args.dataset],
-                                             audio_input_dim=constants.feature_len_dict[args.audio_feat], 
-                                             text_input_dim=constants.feature_len_dict[args.text_feat])
+        global_model = SERClassifier(
+            num_classes=constants.num_class_dict[args.dataset],
+            audio_input_dim=constants.feature_len_dict[args.audio_feat],
+            text_input_dim=constants.feature_len_dict[args.text_feat],
+            d_hid=64,
+            en_att=args.att
+        )
         global_model = global_model.to(device)
 
         # initialize server
