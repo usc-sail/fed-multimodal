@@ -19,13 +19,16 @@ sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), '
 import constants
 from client_trainer import Client
 from server_trainer import Server
-from mm_models import har_classifier
-from dataload_manager import dataload_manager
+from mm_models import HARClassifier
+from dataload_manager import DataloadManager
 
-# define logging console
+# Define logging console
 import logging
-logging.basicConfig(format='%(asctime)s %(levelname)-3s ==> %(message)s', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
-
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
+    level=logging.INFO, 
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 def set_seed(seed):
     torch.backends.cudnn.deterministic = True
@@ -118,6 +121,19 @@ def parse_args():
         type=float,
         default=1.0,
         help="alpha in direchlet distribution",
+    )
+    
+    parser.add_argument(
+        '--att', 
+        type=bool, 
+        default=False,
+        help='self attention applied or not')
+    
+    parser.add_argument(
+        "--en_att",
+        dest='att',
+        action='store_true',
+        help="enable self-attention"
     )
     
     parser.add_argument(
@@ -217,24 +233,33 @@ if __name__ == '__main__':
         gyro_dict = dm.load_gyro_feat(client_id=client_id)
         shuffle = False if client_id in ['dev', 'test'] else True
         dataloader_dict[client_id] = dm.set_dataloader(acc_dict, gyro_dict, shuffle=shuffle)
-    # pdb.set_trace()
     
     # We perform 5 fold experiments with 5 seeds
     for fold_idx in range(1, 6):
         # number of clients
-        num_of_clients, client_ids = len(dm.client_ids)-2, dm.client_ids[:-2]
+        client_ids = [client_id for client_id in dm.client_ids if client_id not in ['dev', 'test']]
+        num_of_clients = len(client_ids)
+        
         # set seeds
         set_seed(8*fold_idx)
         # loss function
         criterion = nn.NLLLoss().to(device)
         # Define the model
-        global_model = har_classifier(num_classes=constants.num_class_dict[args.dataset],
-                                      acc_input_dim=constants.feature_len_dict[args.acc_feat], 
-                                      gyro_input_dim=constants.feature_len_dict[args.gyro_feat])
+        global_model = HARClassifier(
+            num_classes=constants.num_class_dict[args.dataset],         # Number of classes 
+            acc_input_dim=constants.feature_len_dict[args.acc_feat],    # Acc data input dim
+            gyro_input_dim=constants.feature_len_dict[args.gyro_feat],  # Gyro data input dim
+            en_att=args.att                                             # Enable self attention or not
+        )
         global_model = global_model.to(device)
 
         # initialize server
-        server = Server(args, global_model, device=device, criterion=criterion)
+        server = Server(
+            args, 
+            global_model, 
+            device=device, 
+            criterion=criterion
+        )
         server.initialize_log(fold_idx)
         server.sample_clients(num_of_clients, sample_rate=args.sample_rate)
         
@@ -251,7 +276,13 @@ if __name__ == '__main__':
                 client_id = client_ids[idx]
                 dataloader = dataloader_dict[client_id]
                 # initialize client object
-                client = Client(args, device, criterion, dataloader, copy.deepcopy(server.global_model))
+                client = Client(
+                    args, 
+                    device, 
+                    criterion, 
+                    dataloader, 
+                    copy.deepcopy(server.global_model)
+                )
                 client.update_weights()
                 # server append updates
                 server.save_train_updates(copy.deepcopy(client.get_parameters()), client.result['sample'], client.result)
