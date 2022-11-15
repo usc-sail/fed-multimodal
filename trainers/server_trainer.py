@@ -235,11 +235,11 @@ class Server(object):
         # logging
         logging.info(f'Best epoch {self.best_epoch}')
         if metric == 'acc':
-            logging.info(f'Best dev acc {best_dev_acc:.2f}%, top-5 acc {best_dev_top5_acc:.2f}%')
-            logging.info(f'Best test rec {best_test_acc:.2f}%, top-5 acc {best_test_top5_acc:.2f}%')
+            logging.info(f'Best dev Top-1 Acc {best_dev_acc:.2f}%, Top-5 Acc {best_dev_top5_acc:.2f}%')
+            logging.info(f'Best test Top-1 Acc {best_test_acc:.2f}%, Top-5 Acc {best_test_top5_acc:.2f}%')
         else:
-            logging.info(f'Best dev uar {best_dev_uar:.2f}%, top-1 acc {best_dev_acc:.2f}%')
-            logging.info(f'Best test uar {best_test_uar:.2f}%, top-1 acc {best_test_acc:.2f}%')
+            logging.info(f'Best dev UAR {best_dev_uar:.2f}%, Top-1 Acc {best_dev_acc:.2f}%')
+            logging.info(f'Best test UAR {best_test_uar:.2f}%, Top-1 Acc {best_test_acc:.2f}%')
 
     def summarize_results(self):
         row_df = pd.DataFrame(index=[f'fold{self.fold_idx}'])
