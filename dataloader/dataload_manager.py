@@ -266,41 +266,6 @@ class DataloadManager():
             data_dict = pickle.load(f)
         return data_dict
 
-    def set_dataloader(self, client_id, shuffle=False):
-        # read data
-        if client_id == 'dev':
-            data_a = self.dev_audio
-            data_b = self.dev_video
-        elif client_id == 'test':
-            data_a = self.test_audio
-            data_b = self.test_video
-        else:
-            data_a = self.train_audio[client_id]
-            data_b = self.train_video[client_id]
-
-        # modify data based on simulation
-        if self.sim_data is not None:
-            for idx in range(len(self.sim_data[client_id])):
-                # read simulate feature
-                sim_data = self.sim_data[client_id][idx][-1]
-                # read modality A
-                if read[0] == 1: data_a[idx][-1] = None
-                # read modality B
-                if read[1] == 1: data_b[idx][-1] = None
-                # label noise
-                data_a[idx][-2] = read[2]
-        
-        data_len = len(data_a)
-        data_ab = MMDatasetGenerator(data_a, data_b, data_len)
-        dataloader = DataLoader(
-            data_ab, 
-            batch_size=int(self.args.batch_size), 
-            num_workers=0, 
-            shuffle=shuffle, 
-            collate_fn=collate_mm_fn_padd
-        )
-        return dataloader
-
     def set_dataloader(
             self, 
             data_a: dict,
