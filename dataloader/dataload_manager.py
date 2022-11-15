@@ -68,39 +68,87 @@ class MMDatasetGenerator(Dataset):
         return data_a, data_b, label
 
 
-class dataload_manager():
+class DataloadManager():
     def __init__(self, args: dict):
         self.args = args
-        # initialize paths
+        # Initialize video feature paths
         if self.args.dataset in ['ucf101', 'mit51', 'mit101']:
             self.get_video_feat_path()
+        # Initialize audio feature paths
         if self.args.dataset in ['ucf101', 'mit51', 'mit101', 'meld']:
             self.get_audio_feat_path()
-        if self.args.dataset in ['uci-har']:
+        # Initialize acc/gyro feature paths
+        if self.args.dataset in ['uci-har', 'extrasensory']:
             self.get_acc_feat_path()
             self.get_gyro_feat_path()
             
     def get_audio_feat_path(self):
-        self.audio_feat_path = Path(self.args.data_dir).joinpath('feature', 'audio', self.args.audio_feat, self.args.dataset)
+        """
+        Load audio feature path.
+        """
+        self.audio_feat_path = Path(self.args.data_dir).joinpath(
+            'feature', 
+            'audio', 
+            self.args.audio_feat, 
+            self.args.dataset
+        )
         return Path(self.audio_feat_path)
     
     def get_video_feat_path(self):
-        self.video_feat_path = Path(self.args.data_dir).joinpath('feature', 'video', self.args.video_feat, self.args.dataset)
+        """
+        Load frame-wise video feature path.
+        """
+        self.video_feat_path = Path(self.args.data_dir).joinpath(
+            'feature', 
+            'video', 
+            self.args.video_feat, 
+            self.args.dataset
+        )
         return Path(self.video_feat_path)
 
     def get_text_feat_path(self):
-        self.text_feat_path = Path(self.args.data_dir).joinpath('feature', 'text', self.args.text_feat, self.args.dataset)
+        """
+        Load text feature path.
+        """
+        self.text_feat_path = Path(self.args.data_dir).joinpath(
+            'feature', 
+            'text', 
+            self.args.text_feat, 
+            self.args.dataset
+        )
         return Path(self.text_feat_path)
     
     def get_acc_feat_path(self):
-        self.acc_feat_path = Path(self.args.data_dir).joinpath('feature', 'acc', self.args.dataset)
+        """
+        Load acc feature path.
+        """
+        self.acc_feat_path = Path(self.args.data_dir).joinpath(
+            'feature', 
+            'acc', 
+            self.args.dataset
+        )
         return Path(self.acc_feat_path)
     
     def get_gyro_feat_path(self):
-        self.gyro_feat_path = Path(self.args.data_dir).joinpath('feature', 'gyro', self.args.dataset)
+        """
+        Load gyro feature path.
+        """
+        self.gyro_feat_path = Path(self.args.data_dir).joinpath(
+            'feature', 
+            'gyro', 
+            self.args.dataset
+        )
         return Path(self.gyro_feat_path)
 
-    def get_client_ids(self, fold_idx: int=1):
+    def get_client_ids(
+            self, 
+            fold_idx: int=1
+        ):
+        """
+        Load client ids.
+        :param fold_idx: fold index
+        :return: None
+        """
         if self.args.dataset in ["mit51"]:
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}')
@@ -110,6 +158,8 @@ class dataload_manager():
         elif self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}')
+        elif self.args.dataset == "extrasensory":
+            data_path = self.acc_feat_path.joinpath(f'fold{fold_idx}')
         elif self.args.dataset == "meld":
             data_path = self.text_feat_path
         self.client_ids = [id.split('.pkl')[0] for id in os.listdir(str(data_path))]
@@ -139,22 +189,6 @@ class dataload_manager():
             data_dict = pickle.load(f)
         return data_dict
     
-    def load_full_audio_feat(self, fold_idx: int=1):
-        if self.args.dataset == "ucf101":
-            alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}')
-        
-            with open(str(data_path.joinpath('train.pkl')), "rb") as f: 
-                self.train_audio = pickle.load(f)
-            with open(str(data_path.joinpath('dev.pkl')), "rb") as f: 
-                self.dev_audio = pickle.load(f)
-            with open(str(data_path.joinpath('test.pkl')), "rb") as f: 
-                self.test_audio = pickle.load(f)
-        elif self.args.dataset == "mit51":
-            alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}')
-
-
     def load_video_feat(
             self, 
             client_id: str, 
@@ -191,6 +225,8 @@ class dataload_manager():
         if self.args.dataset == "uci-har":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.acc_feat_path.joinpath(f'alpha{alpha_str}', f'{client_id}.pkl')
+        elif self.args.dataset == "extrasensory":
+            data_path = self.acc_feat_path.joinpath(f'fold{fold_idx}', f'{client_id}.pkl')
         with open(str(data_path), "rb") as f: data_dict = pickle.load(f)
         return data_dict
     
@@ -208,6 +244,8 @@ class dataload_manager():
         if self.args.dataset == "uci-har":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.gyro_feat_path.joinpath(f'alpha{alpha_str}', f'{client_id}.pkl')
+        elif self.args.dataset == "extrasensory":
+            data_path = self.gyro_feat_path.joinpath(f'fold{fold_idx}', f'{client_id}.pkl')
         with open(str(data_path), "rb") as f: data_dict = pickle.load(f)
         return data_dict
 
@@ -228,22 +266,6 @@ class dataload_manager():
             data_dict = pickle.load(f)
         return data_dict
 
-    def load_full_video_feat(self, fold_idx: int=1):
-        if self.args.dataset == "ucf101":
-            alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}')
-
-            with open(str(data_path.joinpath('train.pkl')), "rb") as f: 
-                self.train_video = pickle.load(f)
-            with open(str(data_path.joinpath('dev.pkl')), "rb") as f: 
-                self.dev_video = pickle.load(f)
-            with open(str(data_path.joinpath('test.pkl')), "rb") as f: 
-                self.test_video = pickle.load(f)
-
-        elif self.args.dataset == "mit51":
-            alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}')
-        
     def set_dataloader(self, client_id, shuffle=False):
         # read data
         if client_id == 'dev':
@@ -354,14 +376,18 @@ class dataload_manager():
         :return: None
         """
         self.setting_str = ''
+        # 1. missing modality
         if self.args.missing_modality == True:
             self.setting_str += 'mm'+str(self.args.missing_modailty_rate).replace('.', '')
+        # 2. label nosiy
         if self.args.label_nosiy == True:
             if len(self.setting_str) != 0: self.setting_str += '_'
             self.setting_str += 'ln'+str(self.args.label_nosiy_level).replace('.', '')
+        # 3. missing labels
         if self.args.missing_label == True:
             if len(self.setting_str) != 0: self.setting_str += '_'
             self.setting_str += 'ml'+str(self.args.missing_label_rate).replace('.', '')
+        # 4. alpha for manual split
         if len(self.setting_str) != 0:
             if alpha is not None:
                 alpha_str = str(self.args.alpha).replace('.', '')
