@@ -16,11 +16,19 @@ class partition_manager():
     def fetch_filelist(self):
         # fetch file list
         if self.args.dataset == "ucf101":
+            # read all files
             self.file_list = glob.glob(self.args.raw_data_dir + '/audios/*/*.wav')
+            # raise error when no files found
+            if len(self.file_list) == 0: 
+                raise FileNotFoundError('No files exists at the location specified')
             self.file_list.sort()
         elif self.args.dataset in ["mit10", "mit51", "mit101"]:
+            # read trani/test files
             self.train_file_list = glob.glob(self.args.raw_data_dir + '/audios/training/*/*.wav')
             self.test_file_list = glob.glob(self.args.raw_data_dir + '/audios/validation/*/*.wav')
+            # raise error when no files found
+            if len(self.train_file_list) == 0: 
+                raise FileNotFoundError('No files exists at the location specified')
             self.train_file_list.sort()
             self.test_file_list.sort()
             
@@ -84,10 +92,9 @@ class partition_manager():
         np.random.seed(seed)
         np.random.shuffle(train_arr)
         val_len = int(len(train_arr)/5)
-        
+        # read the keys
         train_file_id = [train_val_file_id[idx] for idx in train_arr[val_len:]]
         val_file_id = [train_val_file_id[idx] for idx in train_arr[:val_len]]
-        
         return train_file_id, val_file_id
     
     def direchlet_partition(
