@@ -7,8 +7,10 @@ import argparse, logging
 import torch.multiprocessing
 import copy, time, pickle, shutil, sys, os, pdb
 
-from copy import deepcopy
+from tqdm import tqdm
 from pathlib import Path
+from copy import deepcopy
+
 
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'model'))
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'dataloader'))
@@ -16,10 +18,10 @@ sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), '
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'constants'))
 
 import constants
-from dataload_manager import dataload_manager
-from mm_models import audio_video_classifier
 from client_trainer import Client
 from server_trainer import Server
+from mm_models import MMActionClassifier
+from dataload_manager import DataloadManager
 
 # define logging console
 import logging
@@ -36,7 +38,7 @@ def set_seed(seed):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='FedMultimoda experiments')
+    parser = argparse.ArgumentParser(description='FedMultimodal experiments')
     parser.add_argument(
         '--data_dir', 
         default='/media/data/projects/speech-privacy/fed-multimodal/',
@@ -65,15 +67,28 @@ def parse_args():
     )
     
     parser.add_argument(
+        '--att', 
+        type=bool, 
+        default=False,
+        help='self attention applied or not')
+    
+    parser.add_argument(
+        "--en_att",
+        dest='att',
+        action='store_true',
+        help="enable self-attention"
+    )
+    
+    parser.add_argument(
         '--sample_rate', 
-        default=0.2,
+        default=0.1,
         type=float,
         help="client sample rate",
     )
     
     parser.add_argument(
         '--num_epochs', 
-        default=500,
+        default=300,
         type=int,
         help="total training rounds",
     )
@@ -184,7 +199,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     # data manager
-    dm = dataload_manager(args)
+    dm = DataloadManager(args)
     dm.get_simulation_setting(alpha=args.alpha)
     
     # find device
@@ -201,22 +216,28 @@ if __name__ == '__main__':
         dm.get_client_ids(fold_idx=fold_idx)
         # set dataloaders
         dataloader_dict = dict()
-        for client_id in dm.client_ids:
+        logging.info('Loading Data')
+        for client_id in tqdm(dm.client_ids):
             audio_dict = dm.load_audio_feat(client_id=client_id)
             video_dict = dm.load_video_feat(client_id=client_id)
             shuffle = False if client_id in ['dev', 'test'] else True
             dataloader_dict[client_id] = dm.set_dataloader(audio_dict, video_dict, shuffle=shuffle)
         
         # number of clients
-        num_of_clients, client_ids = len(dm.client_ids)-2, dm.client_ids[:-2]
+        client_ids = [client_id for client_id in dm.client_ids if client_id not in ['dev', 'test']]
+        num_of_clients = len(client_ids)
         # set seeds
         set_seed(8)
         # loss function
         criterion = nn.NLLLoss().to(device)
         # Define the model
-        global_model = audio_video_classifier(num_classes=constants.num_class_dict[args.dataset],
-                                              audio_input_dim=constants.feature_len_dict["mfcc"], 
-                                              video_input_dim=constants.feature_len_dict["mobilenet_v2"])
+        global_model = MMActionClassifier(
+            num_classes=constants.num_class_dict[args.dataset],
+            audio_input_dim=constants.feature_len_dict["mfcc"], 
+            video_input_dim=constants.feature_len_dict["mobilenet_v2"],
+            d_hid=64,
+            en_att=args.att
+        )
         global_model = global_model.to(device)
 
         # initialize server
