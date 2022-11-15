@@ -117,7 +117,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--num_clients', 
         type=int, 
-        default=10, 
+        default=200, 
         help='Number of clients to cut from whole data.'
     )
     parser.add_argument(
