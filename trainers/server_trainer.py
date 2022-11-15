@@ -1,25 +1,35 @@
-import logging
-import pandas as pd
 import numpy as np
 import collections
+import pandas as pd
 import copy, pdb, time, warnings, torch
 
+from torch import nn
 from tqdm import tqdm
 from pathlib import Path
+from copy import deepcopy
+from torch.utils import data
 from sklearn.metrics import confusion_matrix
+from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import accuracy_score, recall_score
-from torch.utils.data import DataLoader, Dataset
-from torch import nn
-from torch.utils import data
-from copy import deepcopy
 
-warnings.filterwarnings('ignore')
-logging.basicConfig(format='%(asctime)s %(levelname)-3s ==> %(message)s', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+# logging format
+import logging
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
+    level=logging.INFO, 
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 
 class Server(object):
-    def __init__(self, args, model, device, criterion):
+    def __init__(
+        self, 
+        args, 
+        model, 
+        device,
+        criterion
+    ):
         self.args = args
         self.global_model = model
         self.device = device
@@ -27,7 +37,10 @@ class Server(object):
         self.criterion = criterion
         self.model_setting_str = self.get_model_setting()
         
-    def initialize_log(self, fold_idx=1):
+    def initialize_log(
+        self, 
+        fold_idx: int=1
+    ):
         # log saving path
         self.fold_idx = fold_idx
         self.log_path = Path(self.args.data_dir).joinpath('log', self.args.dataset, self.model_setting_str, f'fold{fold_idx}', 'raw_log')
@@ -43,6 +56,8 @@ class Server(object):
         elif self.args.dataset in ['uci-har']:
             model_setting_str = f'{self.args.acc_feat}_{self.args.gyro_feat}'
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
+        elif self.args.dataset in ['extrasensory']:
+            model_setting_str = f'{self.args.acc_feat}_{self.args.gyro_feat}'
         else:
             model_setting_str = f'{self.args.audio_feat}_{self.args.text_feat}'
         # training settings: local epochs, learning rate, batch size, client sample rate
@@ -50,6 +65,7 @@ class Server(object):
         model_setting_str += '_lr' + str(self.args.learning_rate).replace('.', '')
         model_setting_str += '_bs'+str(self.args.batch_size)
         model_setting_str += '_sr'+str(self.args.sample_rate).replace('.', '')
+        if self.args.att: model_setting_str += '_satt'
         
         # FL simulations: missing modality, label noise, missing labels
         if self.args.missing_modality == True:
@@ -128,7 +144,14 @@ class Server(object):
                 top_k_list.append(top_k_predictions[idx])
         self.result = self.result_summary(truth_list, pred_list, top_k_list, loss_list)
 
-    def result_summary(self, truth_list, pred_list, top_k_list, loss_list):
+    def result_summary(
+        self, 
+        truth_list: list,
+        pred_list: list, 
+        top_k_list: list, 
+        loss_list: list
+    ) -> (dict):
+        
         # save result summary
         result_dict = dict()
         result_dict['acc'] = accuracy_score(truth_list, pred_list)*100
@@ -139,7 +162,11 @@ class Server(object):
         result_dict["sample"] = len(truth_list)
         return result_dict
 
-    def log_result(self, data_split: str, metric: str='uar'):
+    def log_result(
+            self, 
+            data_split: str, 
+            metric: str='uar'
+        ):
         if data_split == 'train':
             loss = np.mean([data['loss'] for data in self.result_dict[self.epoch][data_split]])
             acc = np.mean([data['acc'] for data in self.result_dict[self.epoch][data_split]])
@@ -169,12 +196,20 @@ class Server(object):
         pickle.dump(result_dict, f)
         f.close()
 
-    def save_train_updates(self, model_updates, num_sample, result):
+    def save_train_updates(
+        self, 
+        model_updates: dict, 
+        num_sample: int, 
+        result: dict
+    ):
         self.model_updates.append(model_updates)
         self.num_samples_list.append(num_sample)
         self.result_dict[self.epoch]['train'].append(result)
 
-    def log_epoch_result(self, metric='acc'):
+    def log_epoch_result(
+        self, 
+        metric: str='acc'
+    ):
         if self.epoch == 0:
             self.best_epoch = self.epoch
             self.best_dev_dict = self.result_dict[self.epoch]['dev']
