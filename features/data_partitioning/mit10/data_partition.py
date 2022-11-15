@@ -1,6 +1,7 @@
-# Author: Tiantian Feng, USC SAIL lab, tiantiaf@usc.edu
-import sys, os
+# Author: Tiantian Feng
+# USC SAIL lab, tiantiaf@usc.edu
 import pickle
+import sys, os
 import re, pdb
 import argparse
 import torchaudio

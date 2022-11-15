@@ -72,10 +72,10 @@ class DataloadManager():
     def __init__(self, args: dict):
         self.args = args
         # Initialize video feature paths
-        if self.args.dataset in ['ucf101', 'mit51', 'mit101']:
+        if self.args.dataset in ['ucf101', 'mit10', 'mit51', 'mit101']:
             self.get_video_feat_path()
         # Initialize audio feature paths
-        if self.args.dataset in ['ucf101', 'mit51', 'mit101', 'meld']:
+        if self.args.dataset in ['ucf101', 'mit10', 'mit51', 'mit101', 'meld']:
             self.get_audio_feat_path()
         # Initialize acc/gyro feature paths
         if self.args.dataset in ['uci-har', 'extrasensory']:
@@ -149,7 +149,7 @@ class DataloadManager():
         :param fold_idx: fold index
         :return: None
         """
-        if self.args.dataset in ["mit51"]:
+        if self.args.dataset in ["mit10", "mit51"]:
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}')
         if self.args.dataset in ["uci-har"]:
@@ -179,7 +179,7 @@ class DataloadManager():
         if self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}', f'{client_id}.pkl')
-        elif self.args.dataset == "mit51":
+        elif self.args.dataset in ["mit10", "mit51"]:
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}', f'{client_id}.pkl')
         elif self.args.dataset == "meld":
@@ -203,7 +203,7 @@ class DataloadManager():
         if self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}',  f'{client_id}.pkl')
-        elif self.args.dataset == "mit51":
+        elif self.args.dataset in ["mit10", "mit51"]:
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'{client_id}.pkl')
 
@@ -326,7 +326,7 @@ class DataloadManager():
                                                           self.args.dataset, 
                                                           f'fold{fold_idx}', 
                                                           f'{self.setting_str}.pkl')
-        elif self.args.dataset in ["mit51", "meld", "uci-har"]:
+        elif self.args.dataset in ["mit10", "mit51", "meld", "uci-har"]:
             data_path = Path(self.args.data_dir).joinpath('simulation_feature',
                                                           self.args.dataset,
                                                           f'{self.setting_str}.pkl')

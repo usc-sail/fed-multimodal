@@ -50,7 +50,7 @@ class Server(object):
         
     def get_model_setting(self):
         # Return model setting
-        if self.args.dataset in ['mit51', 'ucf101']:
+        if self.args.dataset in ['mit10', 'mit51', 'ucf101']:
             model_setting_str = f'{self.args.audio_feat}_{self.args.video_feat}'
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
         elif self.args.dataset in ['uci-har']:
@@ -256,9 +256,9 @@ class Server(object):
         w_avg = copy.deepcopy(self.model_updates[0])
 
         for key in w_avg.keys():
-            w_avg[key] = self.model_updates[0][key]*(self.num_samples_list[0]/total_num_samples)
+            w_avg[key] = copy.deepcopy(self.model_updates[0][key])*(self.num_samples_list[0]/total_num_samples)
         for key in w_avg.keys():
             for i in range(1, len(self.model_updates)):
-                w_avg[key] += torch.div(self.model_updates[i][key]*self.num_samples_list[i], total_num_samples)
+                w_avg[key] += torch.div(copy.deepcopy(self.model_updates[i][key])*self.num_samples_list[i], total_num_samples)
         self.global_model.load_state_dict(copy.deepcopy(w_avg))
 
