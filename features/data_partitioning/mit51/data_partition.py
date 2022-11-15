@@ -18,26 +18,32 @@ from partition_manager import partition_manager
 
 def data_partition(args: dict):
     
-    # read arguments
+    # Read arguments
     num_clients, alpha = args.num_clients, args.alpha
     
-    # define partition manager
+    # Define partition manager
     pm = partition_manager(args)
     
-    # fetch all files for processing
+    # Fetch all files for processing
     pm.fetch_filelist()
     
-    # fetch all labels
+    # Fetch all labels
     pm.fetch_label_dict()
     
-    # creating dictionary for partition
+    # Creating dictionary for partition
+    # Since there is no test folder in raw data, we use dev as test
+    # We split 20% data from train as dev
     train_data_dict, test_data_dict = dict(), dict()
+    # Iterate over train file list
+    # Create train_data_dict => {key: [key, file_path, label]}
     for file_path in tqdm(pm.train_file_list):
         video_id, _ = osp.splitext(osp.basename(file_path))
         label_str = osp.basename(osp.dirname(file_path))
         if label_str not in pm.label_dict: continue
         if Path.exists(Path(args.raw_data_dir).joinpath('rawframes', 'training', label_str, video_id, 'img_00071.jpg')) == False: continue
         train_data_dict[f'{label_str}/{video_id}'] = [f'{label_str}/{video_id}', file_path, pm.label_dict[label_str]]
+    # Iterate over dev file list
+    # Create test_data_dict => {key: [key, file_path, label]}
     for file_path in tqdm(pm.test_file_list):
         video_id, _ = osp.splitext(osp.basename(file_path))
         label_str = osp.basename(osp.dirname(file_path))
@@ -45,29 +51,32 @@ def data_partition(args: dict):
         if Path.exists(Path(args.raw_data_dir).joinpath('rawframes', 'validation', label_str, video_id, 'img_00071.jpg')) == False: continue
         test_data_dict[f'{label_str}/{video_id}'] = [f'{label_str}/{video_id}', file_path, pm.label_dict[label_str]]
     
-    # split train and validation
+    # Read keys, and sort, so we have the same keys in order
     train_val_file_id = list(train_data_dict.keys())
     test_file_id = list(test_data_dict.keys())
     train_val_file_id.sort()
     test_file_id.sort()
     
-    # split train and dev
+    # Split train and dev
     train_file_id, dev_file_id = pm.split_train_dev(train_val_file_id)
     
-    # read labels
+    # Read labels from train files
     file_label_list = [train_data_dict[file_id][2] for file_id in train_file_id]
 
-    # each idx of the list contains the file list
+    # Perform split
+    # file_idx_clients => [client0_file_idx: array, client1_file_idx: array, ...]
     file_idx_clients = pm.direchlet_partition(file_label_list)
 
-    # save the partition
+    # Save the partition
     output_data_path = Path(args.output_partition_path).joinpath(args.dataset)
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
 
+    # Obtrain train mapping
     client_data_dict = dict()
     for client_idx in range(num_clients):
         client_data_dict[client_idx] = [train_data_dict[train_file_id[idx]] for idx in file_idx_clients[client_idx]]
     
+    # Obtrain dev and test mapping
     client_data_dict["dev"] = [train_data_dict[file_id] for file_id in dev_file_id]
     client_data_dict["test"] = [test_data_dict[file_id] for file_id in test_file_id]
     alpha_str = str(args.alpha).replace('.', '')
@@ -111,7 +120,12 @@ if __name__ == "__main__":
         default=1000, 
         help='Number of clients to cut from whole data.'
     )
-    parser.add_argument("--dataset", default="mit51")
+    parser.add_argument(
+        "--dataset",
+        type=str, 
+        default="mit51",
+        help='Dataset name.'
+    )
     args = parser.parse_args()
     
     data_partition(args)
