@@ -15,5 +15,6 @@ num_class_dict = {
     'mit': 101, 
     'mit51': 51, 
     'meld': 4,
-    'uci-har': 6
+    'uci-har': 6,
+    'extrasensory': 6
 }

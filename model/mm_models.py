@@ -187,7 +187,7 @@ class HARClassifier(nn.Module):
         self, 
         num_classes: int,       # Number of classes 
         acc_input_dim: int,     # Acc data input dim
-        gyro_input_dim: int,    # Acc data input dim
+        gyro_input_dim: int,    # Gyro data input dim
         d_hid: int=64,          # Hidden Layer size
         en_att: bool=False      # Enable self attention or not
     ):
@@ -228,25 +228,20 @@ class HARClassifier(nn.Module):
         )
 
         # Self attention module
-        self.acc_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=8)
-        self.gyro_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=8)
+        self.acc_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
+        self.gyro_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
         self.init_weight()
 
+        # Projection head
+        self.acc_proj = nn.Linear(d_hid*2, 64)
+        self.gyro_proj = nn.Linear(d_hid*2, 64)
+        
         # Classifier head
         self.classifier = nn.Sequential(
             nn.Linear(128, 64),
             nn.ReLU(),
             nn.Linear(64, num_classes)
         )
-
-        self.acc_proj = nn.Sequential(
-            nn.Linear(hidden_size*2, 64)
-        )
-
-        self.gyro_proj = nn.Sequential(
-            nn.Linear(hidden_size*2, 64)
-        )
-
 
     def init_weight(self):
         for m in self._modules:
