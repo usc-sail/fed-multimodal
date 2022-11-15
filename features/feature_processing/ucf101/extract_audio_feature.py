@@ -1,17 +1,19 @@
-# Author: Tiantian Feng, USC SAIL lab, tiantiaf@usc.edu
-import argparse
-import glob
-import os, sys
-import os.path as osp
+# Author: Tiantian Feng
+# USC SAIL lab, tiantiaf@usc.edu
 import pdb
+import copy
+import glob
 import torch
 import random
+import pickle
+import os, sys
+import argparse
 import torchaudio
 import numpy as np
-import pickle
-import opensmile
-from pathlib import Path
+import os.path as osp
+
 from tqdm import tqdm
+from pathlib import Path
 
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[1])))
 from feature_manager import feature_manager
@@ -23,17 +25,20 @@ def parse_args():
         '--raw_data_dir',
         default='/media/data/public-data/MMAction/ucf101', 
         type=str,
-        help='source data directory')
+        help='source data directory'
+    )
     parser.add_argument(
         '--output_dir', 
         default='/media/data/projects/speech-privacy/fed-multimodal/',
         type=str, 
-        help='output feature directory')
+        help='output feature directory'
+    )
     parser.add_argument(
         '--feature_type', 
         default='mfcc',
         type=str, 
-        help='output feature name')
+        help='output feature name'
+    )
     parser.add_argument(
         "--alpha",
         type=float,
@@ -53,12 +58,17 @@ if __name__ == '__main__':
     # read args
     args = parse_args()
     alpha_str = str(args.alpha).replace('.', '')
-    output_data_path = Path(args.output_dir).joinpath('feature', 'audio', args.feature_type, args.dataset)
+    output_data_path = Path(args.output_dir).joinpath(
+        'feature', 
+        'audio', 
+        args.feature_type, 
+        args.dataset
+    )
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
     
     # initialize feature processer
     feature_manager = feature_manager(args)
-
+    # extract feature first
     if Path.exists(output_data_path.joinpath(f'feature.pkl')) == False:
     
         # fetch all files for processing
@@ -74,7 +84,13 @@ if __name__ == '__main__':
                 file_path = partition_dict[client][idx][1]
                 video_id, _ = osp.splitext(osp.basename(file_path))
                 label_str = osp.basename(osp.dirname(file_path))
-                features = feature_manager.extract_mfcc_features(file_path, label_str, max_len=500)
+                features = feature_manager.extract_mfcc_features(
+                    file_path, 
+                    label_str,
+                    frame_length=40,
+                    frame_shift=20,
+                    max_len=500
+                )
                 data_dict[f'{label_str}/{video_id}'] = features
         
         # saving features
@@ -87,12 +103,19 @@ if __name__ == '__main__':
 
     # save for later uses
     for fold_idx in range(3):
-        output_data_path = Path(args.output_dir).joinpath('feature', 'audio', args.feature_type, args.dataset, f'alpha{alpha_str}', f'fold{fold_idx+1}')
+        output_data_path = Path(args.output_dir).joinpath(
+            'feature', 
+            'audio', 
+            args.feature_type, 
+            args.dataset, 
+            f'alpha{alpha_str}', 
+            f'fold{fold_idx+1}'
+        )
         Path.mkdir(output_data_path, parents=True, exist_ok=True)
     
         partition_dict = feature_manager.fetch_partition(fold_idx+1, alpha=args.alpha)
         for client in partition_dict:
-            save_dict = partition_dict[client]
+            save_dict = copy.deepcopy(partition_dict[client])
             for idx in range(len(partition_dict[client])):
                 features = data_dict[partition_dict[client][idx][0]]
                 save_dict[idx].append(features)

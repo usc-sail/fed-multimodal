@@ -1,8 +1,8 @@
-import glob
+
 import os
 import pdb
+import glob
 import torch
-import pdb
 import random
 import pickle
 import numpy as np
@@ -25,17 +25,20 @@ def parse_args():
         '--raw_data_dir',
         default='/media/data/public-data/MMAction/ucf101', 
         type=str,
-        help='source video directory')
+        help='source video directory'
+    )
     parser.add_argument(
         '--output_dir', 
         default='/media/data/projects/speech-privacy/fed-multimodal/',
         type=str, 
-        help='output feature directory')
+        help='output feature directory'
+    )
     parser.add_argument(
         '--feature_type', 
         default='mobilenet_v2',
         type=str, 
-        help='output feature name')
+        help='output feature name'
+    )
     parser.add_argument(
         "--alpha",
         type=float,
@@ -85,7 +88,14 @@ if __name__ == '__main__':
     
     # save for later uses
     for fold_idx in range(3):
-        output_data_path = Path(args.output_dir).joinpath('feature', 'video', args.feature_type, args.dataset, f'alpha{alpha_str}', f'fold{fold_idx+1}')
+        output_data_path = Path(args.output_dir).joinpath(
+            'feature', 
+            'video', 
+            args.feature_type, 
+            args.dataset, 
+            f'alpha{alpha_str}', 
+            f'fold{fold_idx+1}'
+        )
         Path.mkdir(output_data_path, parents=True, exist_ok=True)
     
         partition_dict = feature_manager.fetch_partition(fold_idx+1, alpha=args.alpha)

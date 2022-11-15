@@ -1,3 +1,5 @@
+# Author: Tiantian Feng
+# USC SAIL lab, tiantiaf@usc.edu
 import torch
 import pickle
 import glob
@@ -19,11 +21,10 @@ from transformers import MobileBertTokenizer, MobileBertModel
 class feature_manager():
     def __init__(self, args: dict):
         self.args = args
-        if 'feature_type' in args:
-            self.initialize_feature_module()
+        if 'feature_type' in args: self.initialize_feature_module()
         
     def initialize_feature_module(self):
-        # load gpu or not
+        # device = gpu or cpu
         self.device = torch.device("cuda:0") if torch.cuda.is_available() else "cpu"
         if torch.cuda.is_available(): print("GPU available, use GPU")
         
@@ -56,17 +57,33 @@ class feature_manager():
             self.model = self.model.to(self.device)
             self.model.eval()
             
-    def extract_frame_features(self, 
-                               video_id: str, 
-                               label_str: str,
-                               max_len: int=-1,
-                               split=None) -> (float, int):
-        """Extract the framewise feature from video streams."""
+    def extract_frame_features(
+        self, 
+        video_id: str, 
+        label_str: str,
+        max_len: int=-1,
+        split=None
+    ) -> (np.array):
+        """
+        Extract the framewise feature from video streams
+        :param video_id: video id
+        :param label_str: label string
+        :param max_len: max len of the features
+        :return: return features
+        """
         if split is None:
-            video_path = Path(self.args.raw_data_dir).joinpath('rawframes', label_str, video_id)
+            video_path = Path(self.args.raw_data_dir).joinpath(
+                'rawframes', 
+                label_str, 
+                video_id
+            )
         else: 
-            video_path = Path(self.args.raw_data_dir).joinpath('rawframes', split, label_str, video_id)
-
+            video_path = Path(self.args.raw_data_dir).joinpath(
+                'rawframes', 
+                split, 
+                label_str, 
+                video_id
+            )
         rawframes = os.listdir(video_path)
         rawframes.sort()
         if self.args.dataset == "ucf101":
@@ -90,12 +107,14 @@ class feature_manager():
         if max_len != -1: features = features[:max_len]
         return features
     
-    def extract_mfcc_features(self, 
-                              audio_path: str, 
-                              label_str: str='',
-                              frame_length: int=40,
-                              frame_shift:  int=20,
-                              max_len: int=-1) -> (float, int):
+    def extract_mfcc_features(
+        self, 
+        audio_path: str, 
+        label_str: str='',
+        frame_length: int=40,
+        frame_shift:  int=20,
+        max_len: int=-1
+    ) -> (np.array):
         """Extract the mfcc feature from audio streams."""
         audio, sr = torchaudio.load(str(audio_path))
         features = torchaudio.compliance.kaldi.fbank(
@@ -110,26 +129,56 @@ class feature_manager():
         return features
     
     def fetch_partition(
-            self, 
-            fold_idx: int=1, 
-            alpha: float=0.5
-        ):
+        self, 
+        fold_idx: int=1, 
+        alpha: float=0.5
+    ) -> (dict):
+        """
+        Read partition file
+        :param fold_idx: fold index
+        :param alpha: manual split non-iidness, the lower, the more skewed distribution is
+        :return: return partition_dict
+        """
         # reading partition
         alpha_str = str(alpha).replace('.', '')
         if self.args.dataset == "ucf101":
-            partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'fold{fold_idx}', f'partition_alpha{alpha_str}.pkl')
+            partition_path = Path(self.args.output_dir).joinpath(
+                "partition", 
+                self.args.dataset, 
+                f'fold{fold_idx}', 
+                f'partition_alpha{alpha_str}.pkl'
+            )
         elif self.args.dataset == "extrasensory":
-            partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'fold{fold_idx}', f'partition.pkl')
-        elif self.args.dataset == "mit51" or self.args.dataset == 'uci-har':
-            partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'partition_alpha{alpha_str}.pkl')
+            partition_path = Path(self.args.output_dir).joinpath(
+                "partition", 
+                self.args.dataset, 
+                f'fold{fold_idx}', 
+                f'partition.pkl'
+            )
+        elif self.args.dataset in ["mit10", "mit51", "uci-har"]:
+            partition_path = Path(self.args.output_dir).joinpath(
+                "partition", 
+                self.args.dataset, 
+                f'partition_alpha{alpha_str}.pkl'
+            )
         elif self.args.dataset == "meld":
-            partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'partition.pkl')
-        
+            partition_path = Path(self.args.output_dir).joinpath(
+                "partition", 
+                self.args.dataset, 
+                f'partition.pkl'
+            )
+        # raise error if file not exists
+        if Path.exists(partition_path) == False: 
+            raise FileNotFoundError('No partition file exists at the location specified')
+        # read file
         with open(str(partition_path), "rb") as f: 
             partition_dict = pickle.load(f)
         return partition_dict
 
-    def extract_text_feature(self, input_str: str) -> (np.array):
+    def extract_text_feature(
+        self, 
+        input_str: str
+    ) -> (np.array):
         """
         Extract features
         :param input_str: input string

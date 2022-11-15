@@ -67,6 +67,12 @@ def data_partition(args: dict):
         
         # each idx of the list contains the file list
         file_idx_clients = pm.direchlet_partition(file_label_list)
+        client_label_list = list()
+        for client_idx in range(num_clients):
+            lable_list = list()
+            for idx in file_idx_clients[client_idx]:
+                lable_list.append(data_dict[train_file_id[idx]][2])
+            client_label_list.append(len(np.unique(lable_list)))
     
         # save the partition
         output_data_path = Path(args.output_partition_path).joinpath(args.dataset, f'fold{fold_idx+1}')
@@ -82,8 +88,9 @@ def data_partition(args: dict):
         with open(output_data_path.joinpath(f'partition_alpha{alpha_str}.pkl'), 'wb') as handle:
             pickle.dump(client_data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
+        
 if __name__ == "__main__":
-    # step 0 train data split
+    
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--raw_data_dir",
@@ -116,7 +123,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--num_clients', 
         type=int,
-        default=100,
+        default=200,
         help='Number of clients to cut from whole data.'
     )
     parser.add_argument("--dataset", default="ucf101")
