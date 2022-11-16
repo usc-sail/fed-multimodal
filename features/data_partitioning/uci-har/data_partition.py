@@ -1,7 +1,8 @@
-# Author: Tiantian Feng, USC SAIL lab, tiantiaf@usc.edu
-import sys, os
+# Author: Tiantian Feng
+# USC SAIL lab, tiantiaf@usc.edu
 import pickle
 import re, pdb
+import sys, os
 import argparse
 import torchaudio
 import numpy as np
@@ -120,7 +121,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--num_clients', 
         type=int, 
-        default=5, 
+        default=10, 
         help='Number of shards to split a subject data.'
     )
 

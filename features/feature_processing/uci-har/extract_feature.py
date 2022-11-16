@@ -92,7 +92,8 @@ if __name__ == '__main__':
         gyro_z = np.genfromtxt(str(data_path.joinpath('body_gyro_z_'+data_type+'.txt')), dtype=float)
     
         # extract data
-        for client_id in acc_dict:
+        print(f'Extract feature {data_type}')
+        for client_id in tqdm(acc_dict):
             # skip condition
             if client_id == 'test' and data_type != 'test': continue
             if data_type == 'test' and client_id != 'test': continue
