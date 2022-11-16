@@ -17,10 +17,10 @@ sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), '
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'constants'))
 
 import constants
-from dataload_manager import dataload_manager
-from mm_models import audio_video_classifier
 from client_trainer import Client
 from server_trainer import Server
+from mm_models import MMActionClassifier
+from dataload_manager import DataloadManager
 
 # define logging console
 import logging
@@ -41,7 +41,8 @@ def parse_args():
         '--data_dir', 
         default='/media/data/projects/speech-privacy/fed-multimodal/',
         type=str, 
-        help='output feature directory')
+        help='output feature directory'
+    )
     
     parser.add_argument(
         '--audio_feat', 
@@ -107,6 +108,19 @@ def parse_args():
     )
     
     parser.add_argument(
+        '--att', 
+        type=bool, 
+        default=False,
+        help='self attention applied or not')
+    
+    parser.add_argument(
+        "--en_att",
+        dest='att',
+        action='store_true',
+        help="enable self-attention"
+    )
+    
+    parser.add_argument(
         '--batch_size',
         default=16,
         type=int,
@@ -166,7 +180,8 @@ def parse_args():
         '--label_nosiy', 
         type=bool, 
         default=False,
-        help='clean label or nosiy label')
+        help='clean label or nosiy label'
+    )
     
     parser.add_argument(
         "--en_label_nosiy",
@@ -197,7 +212,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     # data manager
-    dm = dataload_manager(args)
+    dm = DataloadManager(args)
     dm.get_simulation_setting(alpha=args.alpha)
     
     # find device
@@ -217,7 +232,11 @@ if __name__ == '__main__':
         audio_dict = dm.load_audio_feat(client_id=client_id)
         video_dict = dm.load_video_feat(client_id=client_id)
         shuffle = False if client_id in ['dev', 'test'] else True
-        dataloader_dict[client_id] = dm.set_dataloader(audio_dict, video_dict, shuffle=shuffle)
+        dataloader_dict[client_id] = dm.set_dataloader(
+            audio_dict, 
+            video_dict, 
+            shuffle=shuffle
+        )
 
     # We perform 5 fold experiments with 5 seeds
     for fold_idx in range(1, 4):
@@ -228,13 +247,22 @@ if __name__ == '__main__':
         # loss function
         criterion = nn.NLLLoss().to(device)
         # Define the model
-        global_model = audio_video_classifier(num_classes=constants.num_class_dict[args.dataset],
-                                              audio_input_dim=constants.feature_len_dict[args.audio_feat], 
-                                              video_input_dim=constants.feature_len_dict[args.video_feat])
+        global_model = MMActionClassifier(
+            num_classes=constants.num_class_dict[args.dataset],
+            audio_input_dim=constants.feature_len_dict["mfcc"], 
+            video_input_dim=constants.feature_len_dict["mobilenet_v2"],
+            d_hid=64,
+            en_att=args.att
+        )
         global_model = global_model.to(device)
 
         # initialize server
-        server = Server(args, global_model, device=device, criterion=criterion)
+        server = Server(
+            args, 
+            global_model, 
+            device=device, 
+            criterion=criterion
+        )
         server.initialize_log(fold_idx)
         server.sample_clients(num_of_clients, sample_rate=args.sample_rate)
         
@@ -251,10 +279,20 @@ if __name__ == '__main__':
                 client_id = client_ids[idx]
                 dataloader = dataloader_dict[client_id]
                 # initialize client object
-                client = Client(args, device, criterion, dataloader, copy.deepcopy(server.global_model))
+                client = Client(
+                    args, 
+                    device, 
+                    criterion, 
+                    dataloader, 
+                    copy.deepcopy(server.global_model)
+                )
                 client.update_weights()
                 # server append updates
-                server.save_train_updates(copy.deepcopy(client.get_parameters()), client.result['sample'], client.result)
+                server.save_train_updates(
+                    copy.deepcopy(client.get_parameters()), 
+                    client.result['sample'], 
+                    client.result
+                )
                 del client
             
             # 2. aggregate, load new global weights
@@ -295,4 +333,8 @@ if __name__ == '__main__':
     for metric in ['acc', 'top5_acc', 'uar']:
         row_df[metric] = np.mean(save_result_df[metric])
     save_result_df = pd.concat([save_result_df, row_df])
-    save_result_df.to_csv(str(Path(args.data_dir).joinpath('log', args.dataset, server.model_setting_str).joinpath('result.csv')))
+    save_result_df.to_csv(str(Path(args.data_dir).joinpath(
+        'log', 
+        args.dataset, 
+        server.model_setting_str).joinpath('result.csv'))
+    )

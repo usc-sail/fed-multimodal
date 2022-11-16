@@ -151,15 +151,24 @@ class DataloadManager():
         """
         if self.args.dataset in ["mit10", "mit51"]:
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}')
+            data_path = self.video_feat_path.joinpath(
+                f'alpha{alpha_str}'
+            )
         if self.args.dataset in ["uci-har"]:
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.acc_feat_path.joinpath(f'alpha{alpha_str}')
+            data_path = self.acc_feat_path.joinpath(
+                f'alpha{alpha_str}'
+            )
         elif self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}')
+            data_path = self.video_feat_path.joinpath(
+                f'alpha{alpha_str}', 
+                f'fold{fold_idx}'
+            )
         elif self.args.dataset == "extrasensory":
-            data_path = self.acc_feat_path.joinpath(f'fold{fold_idx}')
+            data_path = self.acc_feat_path.joinpath(
+                f'fold{fold_idx}'
+            )
         elif self.args.dataset == "meld":
             data_path = self.text_feat_path
         self.client_ids = [id.split('.pkl')[0] for id in os.listdir(str(data_path))]
@@ -178,10 +187,17 @@ class DataloadManager():
         """
         if self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}', f'{client_id}.pkl')
+            data_path = self.audio_feat_path.joinpath(
+                f'alpha{alpha_str}', 
+                f'fold{fold_idx}', 
+                f'{client_id}.pkl'
+            )
         elif self.args.dataset in ["mit10", "mit51"]:
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.audio_feat_path.joinpath(f'alpha{alpha_str}', f'{client_id}.pkl')
+            data_path = self.audio_feat_path.joinpath(
+                f'alpha{alpha_str}', 
+                f'{client_id}.pkl'
+            )
         elif self.args.dataset == "meld":
             data_path = self.audio_feat_path.joinpath(f'{client_id}.pkl')
         
@@ -202,11 +218,17 @@ class DataloadManager():
         """
         if self.args.dataset == "ucf101":
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'fold{fold_idx}',  f'{client_id}.pkl')
+            data_path = self.video_feat_path.joinpath(
+                f'alpha{alpha_str}', 
+                f'fold{fold_idx}',  
+                f'{client_id}.pkl'
+            )
         elif self.args.dataset in ["mit10", "mit51"]:
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.video_feat_path.joinpath(f'alpha{alpha_str}', f'{client_id}.pkl')
-
+            data_path = self.video_feat_path.joinpath(
+                f'alpha{alpha_str}', 
+                f'{client_id}.pkl'
+            )
         with open(str(data_path), "rb") as f: 
             data_dict = pickle.load(f)
         return data_dict
@@ -224,9 +246,15 @@ class DataloadManager():
         """
         if self.args.dataset == "uci-har":
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.acc_feat_path.joinpath(f'alpha{alpha_str}', f'{client_id}.pkl')
+            data_path = self.acc_feat_path.joinpath(
+                f'alpha{alpha_str}', 
+                f'{client_id}.pkl'
+            )
         elif self.args.dataset == "extrasensory":
-            data_path = self.acc_feat_path.joinpath(f'fold{fold_idx}', f'{client_id}.pkl')
+            data_path = self.acc_feat_path.joinpath(
+                f'fold{fold_idx}', 
+                f'{client_id}.pkl'
+            )
         with open(str(data_path), "rb") as f: data_dict = pickle.load(f)
         return data_dict
     
@@ -243,9 +271,15 @@ class DataloadManager():
         """
         if self.args.dataset == "uci-har":
             alpha_str = str(self.args.alpha).replace('.', '')
-            data_path = self.gyro_feat_path.joinpath(f'alpha{alpha_str}', f'{client_id}.pkl')
+            data_path = self.gyro_feat_path.joinpath(
+                f'alpha{alpha_str}', 
+                f'{client_id}.pkl'
+            )
         elif self.args.dataset == "extrasensory":
-            data_path = self.gyro_feat_path.joinpath(f'fold{fold_idx}', f'{client_id}.pkl')
+            data_path = self.gyro_feat_path.joinpath(
+                f'fold{fold_idx}', 
+                f'{client_id}.pkl'
+            )
         with open(str(data_path), "rb") as f: data_dict = pickle.load(f)
         return data_dict
 
@@ -261,7 +295,9 @@ class DataloadManager():
         :return: data_dict: [key, path, label, feature_array]
         """
         if self.args.dataset == "meld":
-            data_path = self.text_feat_path.joinpath(f'{client_id}.pkl')
+            data_path = self.text_feat_path.joinpath(
+                f'{client_id}.pkl'
+            )
         with open(str(data_path), "rb") as f: 
             data_dict = pickle.load(f)
         return data_dict
@@ -322,14 +358,18 @@ class DataloadManager():
             return
         
         if self.args.dataset == "ucf101":
-            data_path = Path(self.args.data_dir).joinpath('simulation_feature',
-                                                          self.args.dataset, 
-                                                          f'fold{fold_idx}', 
-                                                          f'{self.setting_str}.pkl')
+            data_path = Path(self.args.data_dir).joinpath(
+                'simulation_feature',
+                self.args.dataset, 
+                f'fold{fold_idx}', 
+                f'{self.setting_str}.pkl'
+            )
         elif self.args.dataset in ["mit10", "mit51", "meld", "uci-har"]:
-            data_path = Path(self.args.data_dir).joinpath('simulation_feature',
-                                                          self.args.dataset,
-                                                          f'{self.setting_str}.pkl')
+            data_path = Path(self.args.data_dir).joinpath(
+                'simulation_feature',
+                self.args.dataset,
+                f'{self.setting_str}.pkl'
+            )
 
         with open(str(data_path), "rb") as f: 
             self.sim_data = pickle.load(f)
