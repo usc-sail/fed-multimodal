@@ -127,6 +127,7 @@ def data_partition(args: dict):
         partition_dict['test'] = list()
         for client_id in train_ids:
             # read all keys
+            if client_id not in client_data_dict: continue
             train_val_arr = np.arange(len(client_data_dict[client_id]))
             if len(train_val_arr) == 0: continue
             
@@ -138,6 +139,7 @@ def data_partition(args: dict):
         
         for client_id in test_ids:
             # read all keys
+            if client_id not in client_data_dict: continue
             arr = np.arange(len(client_data_dict[client_id]))
             if len(arr) == 0: continue
             arr.sort()
