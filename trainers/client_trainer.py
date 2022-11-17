@@ -12,15 +12,17 @@ from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import accuracy_score, recall_score
 
 warnings.filterwarnings('ignore')
+from evaluation import EvalMetric
 
 
 class Client(object):
     def __init__(self, args, device, criterion, dataloader, model):
         self.args = args
+        self.model = model
         self.device = device
         self.criterion = criterion
         self.dataloader = dataloader
-        self.model = model
+        self.multilabel = True if args.dataset == 'ptb-xl' else False
         
     def get_parameters(self):
         # Return model parameters
@@ -46,18 +48,22 @@ class Client(object):
         # Set mode to train model
         self.model.train()
 
-        # prediction and truths
-        pred_list, truth_list, top_k_list, loss_list = list(), list(), list(), list()
+        # initialize eval
+        self.eval = EvalMetric(self.multilabel)
         
         # optimizer
-        optimizer = torch.optim.SGD(self.model.parameters(), lr=self.args.learning_rate, momentum=0.9, weight_decay=1e-04)
+        optimizer = torch.optim.SGD(
+            self.model.parameters(), 
+            lr=self.args.learning_rate, 
+            momentum=0.9, 
+            weight_decay=1e-04
+        )
         
         for iter in range(int(self.args.local_epochs)):
             for batch_idx, batch_data in enumerate(self.dataloader):
                 
                 self.model.zero_grad()
                 optimizer.zero_grad()
-
                 x_a, x_b, y = batch_data
                 
                 # missing modality case
@@ -67,8 +73,9 @@ class Client(object):
                 # pdb.set_trace()
                 # forward
                 outputs = self.model(x_a.float(), x_b.float())
-                outputs = torch.log_softmax(outputs, dim=1)
-
+                if not self.multilabel: 
+                    outputs = torch.log_softmax(outputs, dim=1)
+                
                 # backward
                 loss = self.criterion(outputs, y)
                 loss.backward()
@@ -77,23 +84,21 @@ class Client(object):
                 optimizer.step()
                 
                 # save results
-                predictions = np.argmax(outputs.detach().cpu().numpy(), axis=1)
-                top_k_predictions = np.argsort(outputs.detach().cpu().numpy(), axis = 1)[:, ::-1][:, :5]
-
-                for idx in range(len(predictions)):
-                    pred_list.append(predictions[idx])
-                    truth_list.append(y.detach().cpu().numpy()[idx])
-                    top_k_list.append(top_k_predictions[idx])
-                loss_list.append(loss.item())
-
-        self.result = self.result_summary(truth_list, pred_list, top_k_list, loss_list)
-
-    def result_summary(self, truth_list, pred_list, top_k_list, loss_list):
-        result_dict = dict()
-        result_dict['acc'] = accuracy_score(truth_list, pred_list)*100
-        result_dict['uar'] = recall_score(truth_list, pred_list, average="macro")*100
-        result_dict['top5_acc'] = (np.sum(top_k_list == np.array(truth_list).reshape(len(truth_list), 1)) / len(truth_list))*100
-        result_dict['conf'] = np.round(confusion_matrix(truth_list, pred_list, normalize='true')*100, decimals=2)
-        result_dict["loss"] = np.mean(loss_list)
-        result_dict["sample"] = len(truth_list)
-        return result_dict
+                if not self.multilabel: 
+                    self.eval.append_classification_results(
+                        y, 
+                        outputs, 
+                        loss
+                    )
+                else:
+                    self.eval.append_multilabel_results(
+                        y, 
+                        outputs, 
+                        loss
+                    )
+                    
+        # epoch train results
+        if not self.multilabel:
+            self.result = self.eval.classification_summary()
+        else:
+            self.result = self.eval.multilabel_summary()

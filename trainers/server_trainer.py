@@ -13,6 +13,8 @@ from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import accuracy_score, recall_score
 
+from evaluation import EvalMetric
+
 # logging format
 import logging
 logging.basicConfig(
@@ -36,6 +38,7 @@ class Server(object):
         self.result_dict = dict()
         self.criterion = criterion
         self.model_setting_str = self.get_model_setting()
+        self.multilabel = True if args.dataset == 'ptb-xl' else False
         
     def initialize_log(
         self, 
@@ -43,10 +46,24 @@ class Server(object):
     ):
         # log saving path
         self.fold_idx = fold_idx
-        self.log_path = Path(self.args.data_dir).joinpath('log', self.args.dataset, self.model_setting_str, f'fold{fold_idx}', 'raw_log')
-        self.result_path = Path(self.args.data_dir).joinpath('log', self.args.dataset, self.model_setting_str, f'fold{fold_idx}')
+        self.log_path = Path(self.args.data_dir).joinpath(
+            'log', 
+            self.args.dataset, 
+            self.model_setting_str, 
+            f'fold{fold_idx}', 
+            'raw_log'
+        )
+        self.result_path = Path(self.args.data_dir).joinpath(
+            'log', 
+            self.args.dataset, 
+            self.model_setting_str, 
+            f'fold{fold_idx}'
+        )
         Path.mkdir(self.log_path, parents=True, exist_ok=True)
-        self.log_writer = SummaryWriter(str(self.log_path), filename_suffix=f'_{self.model_setting_str}')
+        self.log_writer = SummaryWriter(
+            str(self.log_path), 
+            filename_suffix=f'_{self.model_setting_str}'
+        )
         
     def get_model_setting(self):
         # Return model setting
@@ -60,6 +77,8 @@ class Server(object):
             model_setting_str = f'{self.args.acc_feat}_{self.args.gyro_feat}'
         elif self.args.dataset in ['extrasensory_watch']:
             model_setting_str = f'{self.args.acc_feat}_{self.args.watch_feat}'
+        elif self.args.dataset in ['ptb-xl']:
+            model_setting_str = 'i_to_avf_v1_to_v6'
         else:
             model_setting_str = f'{self.args.audio_feat}_{self.args.text_feat}'
         # training settings: local epochs, learning rate, batch size, client sample rate
@@ -83,7 +102,11 @@ class Server(object):
         self.clients_list = list()
         for epoch in range(int(self.args.num_epochs)):
             np.random.seed(epoch)
-            idxs_clients = np.random.choice(range(num_of_clients), int(sample_rate * num_of_clients), replace=False)
+            idxs_clients = np.random.choice(
+                range(num_of_clients), 
+                int(sample_rate * num_of_clients), 
+                replace=False
+            )
             self.clients_list.append(idxs_clients)
 
     def initialize_epoch_updates(self, epoch):
@@ -123,8 +146,8 @@ class Server(object):
     def inference(self, dataloader):
         self.global_model.eval()
 
-        # prediction and truths
-        pred_list, truth_list, top_k_list, loss_list = list(), list(), list(), list()
+        # initialize eval
+        self.eval = EvalMetric(self.multilabel)
         for batch_idx, batch_data in enumerate(dataloader):
                 
             self.global_model.zero_grad()
@@ -133,38 +156,31 @@ class Server(object):
             
             # forward
             outputs = self.global_model(x_a.float(), x_b.float())
-            outputs = torch.log_softmax(outputs, dim=1)
+            if not self.multilabel: 
+                outputs = torch.log_softmax(outputs, dim=1)
             loss = self.criterion(outputs, y)
             
-            predictions = np.argmax(outputs.detach().cpu().numpy(), axis=1)
-            top_k_predictions = np.argsort(outputs.detach().cpu().numpy(), axis = 1)[:, ::-1][:, :5]
+            # save results
+            if not self.multilabel: 
+                self.eval.append_classification_results(
+                    y, 
+                    outputs, 
+                    loss
+                )
+            else:
+                self.eval.append_multilabel_results(
+                    y, 
+                    outputs, 
+                    loss
+                )
+                
+        # epoch train results
+        if not self.multilabel:
+            self.result = self.eval.classification_summary()
+        else:
+            self.result = self.eval.multilabel_summary()
 
-            loss_list.append(loss.item())
-            for idx in range(len(predictions)):
-                pred_list.append(predictions[idx])
-                truth_list.append(y.detach().cpu().numpy()[idx])
-                top_k_list.append(top_k_predictions[idx])
-        self.result = self.result_summary(truth_list, pred_list, top_k_list, loss_list)
-
-    def result_summary(
-        self, 
-        truth_list: list,
-        pred_list: list, 
-        top_k_list: list, 
-        loss_list: list
-    ) -> (dict):
-        
-        # save result summary
-        result_dict = dict()
-        result_dict['acc'] = accuracy_score(truth_list, pred_list)*100
-        result_dict['uar'] = recall_score(truth_list, pred_list, average="macro")*100
-        result_dict['top5_acc'] = np.sum(top_k_list == np.array(truth_list).reshape(len(truth_list), 1)) / len(truth_list)*100
-        result_dict['conf'] = np.round(confusion_matrix(truth_list, pred_list, normalize='true')*100, decimals=2)
-        result_dict["loss"] = np.mean(loss_list)
-        result_dict["sample"] = len(truth_list)
-        return result_dict
-
-    def log_result(
+    def log_classification_result(
             self, 
             data_split: str, 
             metric: str='uar'
@@ -183,15 +199,43 @@ class Server(object):
         # loggin console
         if data_split == 'train': logging.info(f'Current Round: {self.epoch}')
         if metric == 'acc':
-            logging.info(f'{data_split} set, Loss: {loss:.3f}, Acc: {acc:.2f}, Top-5 Acc: {top5_acc:.2f}')
+            logging.info(f'{data_split} set, Loss: {loss:.3f}, Acc: {acc:.2f}%, Top-5 Acc: {top5_acc:.2f}%')
         else:
-            logging.info(f'{data_split} set, Loss: {loss:.3f}, UAR: {uar:.2f}, Top-1 Acc: {acc:.2f}')
+            logging.info(f'{data_split} set, Loss: {loss:.3f}, UAR: {uar:.2f}%, Top-1 Acc: {acc:.2f}%')
 
         # loggin to folder
         self.log_writer.add_scalar(f'Loss/{data_split}', loss, self.epoch)
         self.log_writer.add_scalar(f'Acc/{data_split}', acc, self.epoch)
         self.log_writer.add_scalar(f'UAR/{data_split}', uar, self.epoch)
         self.log_writer.add_scalar(f'Top5_Acc/{data_split}', top5_acc, self.epoch)
+        
+    def log_multilabel_result(
+        self, 
+        data_split: str, 
+        metric: str='macro_f'
+    ):
+        if data_split == 'train':
+            loss = np.mean([data['loss'] for data in self.result_dict[self.epoch][data_split]])
+            acc = np.mean([data['acc'] for data in self.result_dict[self.epoch][data_split]])
+            macro_f = np.mean([data['macro_f'] for data in self.result_dict[self.epoch][data_split]])
+        else:
+            loss = self.result_dict[self.epoch][data_split]['loss']
+            acc = self.result_dict[self.epoch][data_split]['acc']
+            macro_f = self.result_dict[self.epoch][data_split]['macro_f']
+
+        # logging to console
+        if data_split == 'train': 
+            logging.info(
+                f'Current Round: {self.epoch}'
+            )
+        logging.info(
+            f'{data_split} set, Loss: {loss:.3f}, Macro-F1: {macro_f:.2f}%, Top-1 Acc: {acc:.2f}%'
+        )
+
+        # logging to folder
+        self.log_writer.add_scalar(f'Loss/{data_split}', loss, self.epoch)
+        self.log_writer.add_scalar(f'Acc/{data_split}', acc, self.epoch)
+        self.log_writer.add_scalar(f'Macro-F1/{data_split}', macro_f, self.epoch)
 
     def save_result(self):
         f = open(str(self.model_result_path.joinpath('results.pkl')), "wb")
@@ -226,19 +270,28 @@ class Server(object):
         
         # log dev results
         best_dev_acc = self.best_dev_dict['acc']
-        best_dev_uar = self.best_dev_dict['uar']
-        best_dev_top5_acc = self.best_dev_dict['top5_acc']
+        if not self.multilabel:
+            best_dev_uar = self.best_dev_dict['uar']
+            best_dev_top5_acc = self.best_dev_dict['top5_acc']
+        else:
+            best_dev_macro_f1 = self.best_dev_dict['macro_f']
 
         # log test results
         best_test_acc = self.best_test_dict['acc']
-        best_test_uar = self.best_test_dict['uar']
-        best_test_top5_acc = self.best_test_dict['top5_acc']
-        
+        if not self.multilabel:
+            best_test_uar = self.best_test_dict['uar']
+            best_test_top5_acc = self.best_test_dict['top5_acc']
+        else:
+            best_test_macro_f1 = self.best_test_dict['macro_f']
+            
         # logging
         logging.info(f'Best epoch {self.best_epoch}')
         if metric == 'acc':
             logging.info(f'Best dev Top-1 Acc {best_dev_acc:.2f}%, Top-5 Acc {best_dev_top5_acc:.2f}%')
             logging.info(f'Best test Top-1 Acc {best_test_acc:.2f}%, Top-5 Acc {best_test_top5_acc:.2f}%')
+        elif metric == 'macro_f':
+            logging.info(f'Best dev Macro-F1 {best_dev_macro_f1:.2f}%, Top-1 Acc {best_dev_acc:.2f}%')
+            logging.info(f'Best test Macro-F1 {best_test_macro_f1:.2f}%, Top-1 Acc {best_test_acc:.2f}%')
         else:
             logging.info(f'Best dev UAR {best_dev_uar:.2f}%, Top-1 Acc {best_dev_acc:.2f}%')
             logging.info(f'Best test UAR {best_test_uar:.2f}%, Top-1 Acc {best_test_acc:.2f}%')
@@ -246,8 +299,11 @@ class Server(object):
     def summarize_results(self):
         row_df = pd.DataFrame(index=[f'fold{self.fold_idx}'])
         row_df['acc']  = self.best_test_dict['acc']
-        row_df['top5_acc'] = self.best_test_dict['top5_acc']
-        row_df['uar']  = self.best_test_dict['uar']
+        if not self.multilabel:
+            row_df['top5_acc'] = self.best_test_dict['top5_acc']
+            row_df['uar'] = self.best_test_dict['uar']
+        else:
+            row_df['macro_f'] = self.best_test_dict['macro_f']
         return row_df
 
     def average_weights(self):
