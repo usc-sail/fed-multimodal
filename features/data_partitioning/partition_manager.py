@@ -17,15 +17,21 @@ class partition_manager():
         # fetch file list
         if self.args.dataset == "ucf101":
             # read all files
-            self.file_list = glob.glob(self.args.raw_data_dir + '/audios/*/*.wav')
+            self.file_list = glob.glob(
+                self.args.raw_data_dir + '/audios/*/*.wav'
+            )
             # raise error when no files found
             if len(self.file_list) == 0: 
                 raise FileNotFoundError('No files exists at the location specified')
             self.file_list.sort()
         elif self.args.dataset in ["mit10", "mit51", "mit101"]:
             # read trani/test files
-            self.train_file_list = glob.glob(self.args.raw_data_dir + '/audios/training/*/*.wav')
-            self.test_file_list = glob.glob(self.args.raw_data_dir + '/audios/validation/*/*.wav')
+            self.train_file_list = glob.glob(
+                self.args.raw_data_dir + '/audios/training/*/*.wav'
+            )
+            self.test_file_list = glob.glob(
+                self.args.raw_data_dir + '/audios/validation/*/*.wav'
+            )
             # raise error when no files found
             if len(self.train_file_list) == 0: 
                 raise FileNotFoundError('No files exists at the location specified')
@@ -70,7 +76,7 @@ class partition_manager():
                 'joy': 2, 
                 'anger': 3
             }
-        elif self.args.dataset == 'extrasensory':
+        elif self.args.dataset in ['extrasensory', 'extrasensory_watch']:
             self.label_dict = {
                 'label:LYING_DOWN': 0, 
                 'label:SITTING': 1, 
