@@ -7,17 +7,20 @@ feature_len_dict = {
     'mobilebert':       512,
     'watch_acc':        3,
     'acc':              3,
-    'gyro':             3
+    'gyro':             3,
+    'i_to_avf':         6,
+    'v1_to_v6':         6
 }
 
 # define num of class dict
 num_class_dict = {
-    'ucf101':       51, 
-    'mit101':       101, 
-    'mit10':        10, 
-    'mit51':        51, 
-    'meld':         4,
-    'uci-har':      6,
-    'extrasensory': 6,
-    'extrasensory_watch': 6
+    'ucf101':               51, 
+    'mit101':               101, 
+    'mit10':                10, 
+    'mit51':                51, 
+    'meld':                 4,
+    'uci-har':              6,
+    'ptb-xl':               5,
+    'extrasensory':         6,
+    'extrasensory_watch':   6
 }

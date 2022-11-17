@@ -91,6 +91,18 @@ class DataloadManager():
         if self.args.dataset in ['extrasensory_watch']:
             self.get_acc_feat_path()
             self.get_watch_acc_feat_path()
+        # Initialize ptb feature paths
+        if self.args.dataset in ['ptb-xl']:
+            self.i_to_avf_path = Path(self.args.data_dir).joinpath(
+                'feature', 
+                'I_to_AVF', 
+                args.dataset
+            )
+            self.v1_to_v6_path = Path(self.args.data_dir).joinpath(
+                'feature', 
+                'V1_to_V6', 
+                args.dataset
+            )
             
     def get_audio_feat_path(self):
         """
@@ -192,6 +204,8 @@ class DataloadManager():
             )
         elif self.args.dataset == "meld":
             data_path = self.text_feat_path
+        elif self.args.dataset == "ptb-xl":
+            data_path = self.v1_to_v6_path
         self.client_ids = [id.split('.pkl')[0] for id in os.listdir(str(data_path))]
         self.client_ids.sort()
     
@@ -341,6 +355,23 @@ class DataloadManager():
         with open(str(data_path), "rb") as f: 
             data_dict = pickle.load(f)
         return data_dict
+
+    def load_ecg_feat(
+            self, 
+            client_id: str, 
+            fold_idx: int=1
+        ) -> dict:
+        """
+        Load ecg feature data.
+        :param client_id: client id
+        :param fold_idx: fold index
+        :return: data_dict: [key, path, label, feature_array]
+        """
+        i_to_avf_data_path = self.i_to_avf_path.joinpath(f'{client_id}.pkl')
+        v1_to_v6_data_path = self.v1_to_v6_path.joinpath(f'{client_id}.pkl')
+        with open(str(i_to_avf_data_path), "rb") as f:  i_to_avf_data_dict = pickle.load(f)
+        with open(str(v1_to_v6_data_path), "rb") as f:  v1_to_v6_data_dict = pickle.load(f)
+        return i_to_avf_data_dict, v1_to_v6_data_dict
 
     def set_dataloader(
             self, 
