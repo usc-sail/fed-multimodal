@@ -85,6 +85,14 @@ class partition_manager():
                 'label:BICYCLING': 4, 
                 'label:OR_standing': 5
             }
+        elif self.args.dataset in ['ptb-xl']:
+            self.label_dict = {
+                'NORM': 0, 
+                'MI': 1, 
+                'STTC': 2, 
+                'CD': 3,
+                'HYP': 4
+            }
         elif self.args.dataset == 'uci-har':
             self.label_dict = {k: i for i, k in enumerate(np.arange(6))}
         

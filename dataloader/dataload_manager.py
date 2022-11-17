@@ -42,7 +42,13 @@ def collate_mm_fn_padd(batch):
 
 
 class MMDatasetGenerator(Dataset):
-    def __init__(self, modalityA, modalityB, data_len, simulate_feat=None):
+    def __init__(
+        self, 
+        modalityA, 
+        modalityB, 
+        data_len, 
+        simulate_feat=None
+    ):
         self.modalityA = modalityA
         self.modalityB = modalityB
         self.simulate_feat = simulate_feat
@@ -81,6 +87,10 @@ class DataloadManager():
         if self.args.dataset in ['uci-har', 'extrasensory']:
             self.get_acc_feat_path()
             self.get_gyro_feat_path()
+        # Initialize acc/watch_acc feature paths
+        if self.args.dataset in ['extrasensory_watch']:
+            self.get_acc_feat_path()
+            self.get_watch_acc_feat_path()
             
     def get_audio_feat_path(self):
         """
@@ -129,6 +139,17 @@ class DataloadManager():
         )
         return Path(self.acc_feat_path)
     
+    def get_watch_acc_feat_path(self):
+        """
+        Load watch acc feature path.
+        """
+        self.watch_acc_feat_path = Path(self.args.data_dir).joinpath(
+            'feature', 
+            'watch_acc', 
+            self.args.dataset
+        )
+        return Path(self.watch_acc_feat_path)
+    
     def get_gyro_feat_path(self):
         """
         Load gyro feature path.
@@ -165,7 +186,7 @@ class DataloadManager():
                 f'alpha{alpha_str}', 
                 f'fold{fold_idx}'
             )
-        elif self.args.dataset == "extrasensory":
+        elif self.args.dataset in ["extrasensory", "extrasensory_watch"]:
             data_path = self.acc_feat_path.joinpath(
                 f'fold{fold_idx}'
             )
@@ -250,8 +271,27 @@ class DataloadManager():
                 f'alpha{alpha_str}', 
                 f'{client_id}.pkl'
             )
-        elif self.args.dataset == "extrasensory":
+        elif self.args.dataset in ["extrasensory", "extrasensory_watch"]:
             data_path = self.acc_feat_path.joinpath(
+                f'fold{fold_idx}', 
+                f'{client_id}.pkl'
+            )
+        with open(str(data_path), "rb") as f: data_dict = pickle.load(f)
+        return data_dict
+    
+    def load_watch_acc_feat(
+            self, 
+            client_id: str, 
+            fold_idx: int=1
+        ) -> dict:
+        """
+        Load watch-based acc feature data for HAR applications.
+        :param client_id: client id
+        :param fold_idx: fold index
+        :return: data_dict: [key, path, label, feature_array]
+        """
+        if self.args.dataset == "extrasensory_watch":
+            data_path = self.watch_acc_feat_path.joinpath(
                 f'fold{fold_idx}', 
                 f'{client_id}.pkl'
             )

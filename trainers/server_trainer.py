@@ -58,6 +58,8 @@ class Server(object):
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
         elif self.args.dataset in ['extrasensory']:
             model_setting_str = f'{self.args.acc_feat}_{self.args.gyro_feat}'
+        elif self.args.dataset in ['extrasensory_watch']:
+            model_setting_str = f'{self.args.acc_feat}_{self.args.watch_feat}'
         else:
             model_setting_str = f'{self.args.audio_feat}_{self.args.text_feat}'
         # training settings: local epochs, learning rate, batch size, client sample rate

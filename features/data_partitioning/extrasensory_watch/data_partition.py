@@ -85,7 +85,7 @@ def data_partition(args: dict):
                             dtype=float, 
                             delimiter=' '
                         )[:, 1:]
-                        if len(acc_data) != 800 and acc_data.shape[1] != 3: continue
+                        if len(acc_data) != 800 or acc_data.shape[1] != 3: continue
                         
                         # read watch acc data
                         watch_data = np.genfromtxt(
@@ -93,7 +93,7 @@ def data_partition(args: dict):
                             dtype=float, 
                             delimiter=' '
                         )[:, 1:]
-                        if len(watch_data) != 500 and watch_data.shape[1] != 3: continue
+                        if len(watch_data) != 500: continue
                         # read labels and keys
                         label = pm.label_dict[row_df.index[row_df.argmax()]]
                         key = f'{client_id}/{str(index)}'
