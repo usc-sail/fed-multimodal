@@ -15,6 +15,13 @@ from sklearn.model_selection import KFold
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[1])))
 from partition_manager import partition_manager
 
+# Define logging console
+import logging
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
+    level=logging.INFO, 
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 def data_partition(args: dict):
     
@@ -36,9 +43,10 @@ def data_partition(args: dict):
         client_data_dict = dict()
         for client_id in client_id_list:
             # read data names
+            logging.info(f'Processing data for {client_id}')
             client_data_dict[client_id] = list()
             label_df = pd.read_csv(Path(args.raw_data_dir).joinpath('ExtraSensory/uuid_label', f'{client_id}.features_labels.csv.gz'), index_col=0)[pm.label_dict]
-            
+            # pdb.set_trace()
             # iterate rows
             for index in tqdm(list(label_df.index), ncols=100, miniters=100):
                 row_df = label_df.loc[index, :]
@@ -46,13 +54,17 @@ def data_partition(args: dict):
                     acc_file_path = Path(args.raw_data_dir).joinpath('ExtraSensory/raw_acc', client_id, str(index)+'.m_raw_acc.dat')
                     gyro_file_path = Path(args.raw_data_dir).joinpath('ExtraSensory/proc_gyro', client_id, str(index)+'.m_proc_gyro.dat')
                     if Path.exists(acc_file_path) and Path.exists(gyro_file_path):
+                        # if the label is on the table, skip
+                        label = pm.label_dict[row_df.index[row_df.argmax()]]
+                        if label == 6 or label == 7: continue
+
+                        # read data and check format
                         acc_data = np.genfromtxt(str(acc_file_path), dtype=float, delimiter=' ')[:, 1:]
                         if len(acc_data) != 800 and acc_data.shape[1] != 3: continue
                         gyro_data = np.genfromtxt(str(gyro_file_path), dtype=float, delimiter=' ')[:, 1:]
                         if len(gyro_data) != 800 and gyro_data.shape[1] != 3: continue
                         if len(acc_data) != len(gyro_data): continue
                         
-                        label = pm.label_dict[row_df.index[row_df.argmax()]]
                         key = f'{client_id}/{str(index)}'
                         client_data_dict[client_id].append([key, str(acc_file_path), label])
         # pdb.set_trace()

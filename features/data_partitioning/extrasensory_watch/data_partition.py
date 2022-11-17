@@ -79,6 +79,10 @@ def data_partition(args: dict):
                     )
                     
                     if Path.exists(acc_file_path) and Path.exists(watch_acc_file_path):
+                        # read labels and keys
+                        label = pm.label_dict[row_df.index[row_df.argmax()]]
+                        if label == 6 or label == 7: continue
+                        
                         # read acc data
                         acc_data = np.genfromtxt(
                             str(acc_file_path), 
@@ -92,12 +96,11 @@ def data_partition(args: dict):
                             str(watch_acc_file_path), 
                             dtype=float, 
                             delimiter=' '
-                        )[:, 1:]
-                        if len(watch_data) != 500: continue
-                        # read labels and keys
-                        label = pm.label_dict[row_df.index[row_df.argmax()]]
+                        )
+                        if len(watch_data) < 400: continue
                         key = f'{client_id}/{str(index)}'
                         client_data_dict[client_id].append([key, str(acc_file_path), label])
+                        # pdb.set_trace()
                         
         with open(str(output_data_path.joinpath(f'partition.pkl')), 'wb') as handle:
             pickle.dump(client_data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
