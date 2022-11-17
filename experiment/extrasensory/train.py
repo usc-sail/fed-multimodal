@@ -266,7 +266,13 @@ if __name__ == '__main__':
                 client_id = client_ids[idx]
                 dataloader = dataloader_dict[client_id]
                 # initialize client object
-                client = Client(args, device, criterion, dataloader, copy.deepcopy(server.global_model))
+                client = Client(
+                    args, 
+                    device, 
+                    criterion, 
+                    dataloader, 
+                    copy.deepcopy(server.global_model)
+                )
                 client.update_weights()
                 # server append updates
                 server.save_train_updates(copy.deepcopy(client.get_parameters()), client.result['sample'], client.result)
@@ -275,18 +281,27 @@ if __name__ == '__main__':
             # 2. aggregate, load new global weights
             server.average_weights()
             logging.info('---------------------------------------------------------')
-            server.log_result(data_split='train')
+            server.log_result(
+                data_split='train',
+                metric='uar'
+            )
             if epoch % args.test_frequency == 0:
                 with torch.no_grad():
                     # 3. Perform the validation on dev set
                     server.inference(dataloader_dict['dev'])
                     server.result_dict[epoch]['dev'] = server.result
-                    server.log_result(data_split='dev')
+                    server.log_result(
+                        data_split='dev',
+                        metric='uar'
+                    )
 
                     # 4. Perform the test on holdout set
                     server.inference(dataloader_dict['test'])
                     server.result_dict[epoch]['test'] = server.result
-                    server.log_result(data_split='test')
+                    server.log_result(
+                        data_split='test',
+                        metric='uar'
+                    )
                 
                 logging.info('---------------------------------------------------------')
                 server.log_epoch_result(metric='uar')
