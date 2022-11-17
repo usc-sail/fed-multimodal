@@ -161,7 +161,7 @@ class feature_manager():
                 self.args.dataset, 
                 f'partition_alpha{alpha_str}.pkl'
             )
-        elif self.args.dataset == "meld":
+        elif self.args.dataset in ["meld", "ptb-xl"]:
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 
                 self.args.dataset, 
@@ -171,7 +171,7 @@ class feature_manager():
         if Path.exists(partition_path) == False: 
             raise FileNotFoundError('No partition file exists at the location specified')
         # read file
-        with open(str(partition_path), "rb") as f: 
+        with open(str(partition_path), "rb") as f:  
             partition_dict = pickle.load(f)
         return partition_dict
 
