@@ -40,7 +40,9 @@ def data_partition(args: dict):
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
         
     # data root folder
-    data_path = Path(args.raw_data_dir).joinpath('ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.1')
+    data_path = Path(args.raw_data_dir).joinpath(
+        'ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.1'
+    )
     patient_df = pd.read_csv(
         data_path.joinpath('ptbxl_database.csv'), 
         index_col=0

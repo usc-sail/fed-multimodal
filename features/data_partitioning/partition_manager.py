@@ -78,11 +78,11 @@ class partition_manager():
             }
         elif self.args.dataset in ['extrasensory', 'extrasensory_watch']:
             self.label_dict = {
-                'label:LYING_DOWN': 0, 
-                'label:SITTING': 1, 
-                'label:FIX_walking': 2, 
-                'label:FIX_running': 3,
-                'label:BICYCLING': 4, 
+                'label:SITTING': 0, 
+                'label:LYING_DOWN': 1,
+                'label:FIX_walking': 2,
+                'label:FIX_running': 3, 
+                'label:BICYCLING': 4,
                 'label:OR_standing': 5
             }
         elif self.args.dataset in ['ptb-xl']:
