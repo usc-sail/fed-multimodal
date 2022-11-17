@@ -40,7 +40,10 @@ def set_seed(seed):
     random.seed(seed)
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='FedMultimoda experiments')
+    parser = argparse.ArgumentParser(
+        description='FedMultimoda experiments'
+    )
+    
     parser.add_argument(
         '--data_dir', 
         default='/media/data/projects/speech-privacy/fed-multimodal/',
@@ -149,7 +152,8 @@ def parse_args():
         '--label_nosiy', 
         type=bool, 
         default=False,
-        help='clean label or nosiy label')
+        help='clean label or nosiy label'
+    )
     
     parser.add_argument(
         "--en_label_nosiy",
@@ -162,7 +166,8 @@ def parse_args():
         '--att', 
         type=bool, 
         default=False,
-        help='self attention applied or not')
+        help='self attention applied or not'
+    )
     
     parser.add_argument(
         "--en_att",

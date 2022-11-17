@@ -83,7 +83,9 @@ class partition_manager():
                 'label:FIX_walking': 2,
                 'label:FIX_running': 3, 
                 'label:BICYCLING': 4,
-                'label:OR_standing': 5
+                'label:OR_standing': 5,
+                'label:PHONE_ON_TABLE': 6,
+                'label:PHONE_IN_BAG': 7
             }
         elif self.args.dataset in ['ptb-xl']:
             self.label_dict = {
