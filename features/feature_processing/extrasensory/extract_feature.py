@@ -60,7 +60,7 @@ if __name__ == '__main__':
         fm = feature_manager(args)
         
         # fetch all files for processing
-        partition_dict = fm.fetch_partition()
+        partition_dict = fm.fetch_partition(fold_idx=fold_idx)
         print('Reading data from folder: ', args.raw_data_dir)
         print('Total number of clients found: ', len(partition_dict.keys()))
         

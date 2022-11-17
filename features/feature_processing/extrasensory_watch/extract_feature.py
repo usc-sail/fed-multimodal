@@ -81,7 +81,7 @@ if __name__ == '__main__':
         # fetch all files for processing
         partition_dict = fm.fetch_partition()
         logging.info(f'Reading data from folder: {args.raw_data_dir}')
-        print(f'Total number of clients found: {len(partition_dict.keys())}')
+        logging.info(f'Total number of clients found: {len(partition_dict.keys())}')
         
         # extract data
         for client_id in partition_dict:
@@ -90,7 +90,7 @@ if __name__ == '__main__':
             acc_dict = copy.deepcopy(partition_dict[client_id])
             watch_dict = copy.deepcopy(partition_dict[client_id])
             
-            if len(acc_dict) < 100 or len(watch_dict) < 100: continue
+            if len(acc_dict) < 10 or len(watch_dict) < 10: continue
             # iterate over keys
             for idx in tqdm(range(len(acc_dict))):
                 # 0. initialize acc, gyro file path
@@ -101,7 +101,7 @@ if __name__ == '__main__':
                 acc_features = np.genfromtxt(
                     str(acc_file_path), 
                     dtype=float, delimiter=' '
-                )[:, 1:][::5]
+                )[:, 1:][200:600][::4]
                 
                 # 1.2 normalize acc data
                 mean, std = np.mean(acc_features, axis=0), np.std(acc_features, axis=0)
@@ -113,7 +113,7 @@ if __name__ == '__main__':
                     str(watch_acc_file_path), 
                     dtype=float, 
                     delimiter=' '
-                )[::5]
+                )[125:375][::2]
                 # pdb.set_trace()
                 if watch_acc_features.shape[1] == 4:
                     watch_acc_features = watch_acc_features[:, 1:]
