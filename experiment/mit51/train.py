@@ -24,7 +24,11 @@ from dataload_manager import DataloadManager
 
 # define logging console
 import logging
-logging.basicConfig(format='%(asctime)s %(levelname)-3s ==> %(message)s', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
+    level=logging.INFO, 
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 
 def set_seed(seed):
@@ -111,7 +115,8 @@ def parse_args():
         '--att', 
         type=bool, 
         default=False,
-        help='self attention applied or not')
+        help='self attention applied or not'
+    )
     
     parser.add_argument(
         "--en_att",
@@ -264,7 +269,10 @@ if __name__ == '__main__':
             criterion=criterion
         )
         server.initialize_log(fold_idx)
-        server.sample_clients(num_of_clients, sample_rate=args.sample_rate)
+        server.sample_clients(
+            num_of_clients, 
+            sample_rate=args.sample_rate
+        )
         
         # set seeds again
         set_seed(8*fold_idx)
@@ -298,7 +306,7 @@ if __name__ == '__main__':
             # 2. aggregate, load new global weights
             server.average_weights()
             logging.info('---------------------------------------------------------')
-            server.log_result(
+            server.log_classification_result(
                 data_split='train',
                 metric='acc'
             )
@@ -307,7 +315,7 @@ if __name__ == '__main__':
                     # 3. Perform the validation on dev set
                     server.inference(dataloader_dict['dev'])
                     server.result_dict[epoch]['dev'] = server.result
-                    server.log_result(
+                    server.log_classification_result(
                         data_split='dev', 
                         metric='acc'
                     )
@@ -315,7 +323,7 @@ if __name__ == '__main__':
                     # 4. Perform the test on holdout set
                     server.inference(dataloader_dict['test'])
                     server.result_dict[epoch]['test'] = server.result
-                    server.log_result(
+                    server.log_classification_result(
                         data_split='test', 
                         metric='acc'
                     )
