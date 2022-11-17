@@ -46,7 +46,8 @@ def parse_args():
         '--data_dir', 
         default='/media/data/projects/speech-privacy/fed-multimodal/',
         type=str, 
-        help='output feature directory')
+        help='output feature directory'
+    )
     
     parser.add_argument(
         '--audio_feat', 
@@ -66,7 +67,8 @@ def parse_args():
         '--att', 
         type=bool, 
         default=False,
-        help='self attention applied or not')
+        help='self attention applied or not'
+    )
     
     parser.add_argument(
         "--en_att",
@@ -177,7 +179,8 @@ def parse_args():
         '--label_nosiy', 
         type=bool, 
         default=False,
-        help='clean label or nosiy label')
+        help='clean label or nosiy label'
+    )
     
     parser.add_argument(
         "--en_label_nosiy",
@@ -229,7 +232,11 @@ if __name__ == '__main__':
         audio_dict = dm.load_audio_feat(client_id=client_id)
         text_dict = dm.load_text_feat(client_id=client_id)
         shuffle = False if client_id in ['dev', 'test'] else True
-        dataloader_dict[client_id] = dm.set_dataloader(audio_dict, text_dict, shuffle=shuffle)
+        dataloader_dict[client_id] = dm.set_dataloader(
+            audio_dict, 
+            text_dict, 
+            shuffle=shuffle
+        )
     # pdb.set_trace()
     # We perform 5 fold experiments with 5 seeds
     for fold_idx in range(1, 4):
@@ -251,7 +258,12 @@ if __name__ == '__main__':
         global_model = global_model.to(device)
 
         # initialize server
-        server = Server(args, global_model, device=device, criterion=criterion)
+        server = Server(
+            args, 
+            global_model, 
+            device=device, 
+            criterion=criterion
+        )
         server.initialize_log(fold_idx)
         server.sample_clients(num_of_clients, sample_rate=args.sample_rate)
         
@@ -268,7 +280,13 @@ if __name__ == '__main__':
                 client_id = client_ids[idx]
                 dataloader = dataloader_dict[client_id]
                 # initialize client object
-                client = Client(args, device, criterion, dataloader, copy.deepcopy(server.global_model))
+                client = Client(
+                    args, 
+                    device, 
+                    criterion, 
+                    dataloader, 
+                    copy.deepcopy(server.global_model)
+                )
                 client.update_weights()
                 # server append updates
                 server.save_train_updates(copy.deepcopy(client.get_parameters()), client.result['sample'], client.result)
@@ -277,18 +295,27 @@ if __name__ == '__main__':
             # 2. aggregate, load new global weights
             server.average_weights()
             logging.info('---------------------------------------------------------')
-            server.log_result(data_split='train', metric='uar')
+            server.log_classification_result(
+                data_split='train', 
+                metric='uar'
+            )
             if epoch % args.test_frequency == 0:
                 with torch.no_grad():
                     # 3. Perform the validation on dev set
                     server.inference(dataloader_dict['dev'])
                     server.result_dict[epoch]['dev'] = server.result
-                    server.log_result(data_split='dev', metric='uar')
+                    server.log_classification_result(
+                        data_split='dev', 
+                        metric='uar'
+                    )
 
                     # 4. Perform the test on holdout set
                     server.inference(dataloader_dict['test'])
                     server.result_dict[epoch]['test'] = server.result
-                    server.log_result(data_split='test', metric='uar')
+                    server.log_classification_result(
+                        data_split='test', 
+                        metric='uar'
+                    )
                 
                 logging.info('---------------------------------------------------------')
                 server.log_epoch_result(metric='uar')
@@ -300,7 +327,7 @@ if __name__ == '__main__':
         
     # Calculate the average of the 5-fold experiments
     row_df = pd.DataFrame(index=['average'])
-    for metric in ['acc', 'top5_acc', 'uar']:
+    for metric in ['uar', 'acc', 'top5_acc']:
         row_df[metric] = np.mean(save_result_df[metric])
     save_result_df = pd.concat([save_result_df, row_df])
     save_result_df.to_csv(str(Path(args.data_dir).joinpath('log', args.dataset, server.model_setting_str).joinpath('result.csv')))
