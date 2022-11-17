@@ -291,21 +291,32 @@ if __name__ == '__main__':
             # 2. aggregate, load new global weights
             server.average_weights()
             logging.info('---------------------------------------------------------')
-            server.log_result(data_split='train')
+            server.log_classification_result(
+                data_split='train',
+                metric='uar'
+            )
             if epoch % args.test_frequency == 0:
                 with torch.no_grad():
                     # 3. Perform the validation on dev set
                     server.inference(dataloader_dict['dev'])
                     server.result_dict[epoch]['dev'] = server.result
-                    server.log_result(data_split='dev')
+                    server.log_classification_result(
+                        data_split='dev',
+                        metric='uar'
+                    )
 
                     # 4. Perform the test on holdout set
                     server.inference(dataloader_dict['test'])
                     server.result_dict[epoch]['test'] = server.result
-                    server.log_result(data_split='test')
+                    server.log_classification_result(
+                        data_split='test',
+                        metric='uar'
+                    )
                 
                 logging.info('---------------------------------------------------------')
-                server.log_epoch_result(metric='uar')
+                server.log_epoch_result(
+                    metric='uar'
+                )
             logging.info('---------------------------------------------------------')
 
         # Performance save code
@@ -314,7 +325,7 @@ if __name__ == '__main__':
         
     # Calculate the average of the 5-fold experiments
     row_df = pd.DataFrame(index=['average'])
-    for metric in ['acc', 'top5_acc', 'uar']:
+    for metric in ['uar', 'acc', 'top5_acc']:
         row_df[metric] = np.mean(save_result_df[metric])
     save_result_df = pd.concat([save_result_df, row_df])
     save_result_df.to_csv(str(Path(args.data_dir).joinpath('log', args.dataset, server.model_setting_str).joinpath('result.csv')))
