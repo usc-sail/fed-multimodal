@@ -211,7 +211,7 @@ if __name__ == '__main__':
         # load simulation feature
         dm.load_sim_dict()
         # load client ids
-        dm.get_client_ids()
+        dm.get_client_ids(fold_idx=fold_idx)
         
         # set dataloaders
         dataloader_dict = dict()
