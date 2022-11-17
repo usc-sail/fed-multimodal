@@ -285,6 +285,100 @@ class HARClassifier(nn.Module):
         return preds
 
 
+class ECGClassifier(nn.Module):
+    def __init__(
+        self, 
+        num_classes: int,           # Number of classes 
+        i_to_avf_input_dim: int,    # 6 lead ecg
+        v1_to_v6_input_dim: int,    # v1-v6 ecg
+        d_hid: int=64,              # Hidden Layer size
+        n_filters: int=32,          # number of filters
+        en_att: bool=False          # Enable self attention or not
+    ):
+        super(ECGClassifier, self).__init__()
+        self.dropout_p = 0.1
+        self.en_att = en_att
+        
+        # Conv Encoder module
+        self.i_to_avf_conv = Conv1dEncoder(
+            input_dim=i_to_avf_input_dim, 
+            n_filters=n_filters, 
+            dropout=self.dropout_p, 
+        )
+        
+        self.v1_to_v6_conv = Conv1dEncoder(
+            input_dim=v1_to_v6_input_dim, 
+            n_filters=n_filters, 
+            dropout=self.dropout_p, 
+        )
+        
+        # RNN module
+        self.i_to_avf_rnn = nn.GRU(
+            input_size=n_filters*4, 
+            hidden_size=d_hid, 
+            num_layers=1, 
+            batch_first=True, 
+            dropout=self.dropout_p, 
+            bidirectional=True
+        )
+
+        self.v1_to_v6_rnn = nn.GRU(
+            input_size=n_filters*4, 
+            hidden_size=d_hid, 
+            num_layers=1, 
+            batch_first=True, 
+            dropout=self.dropout_p, 
+            bidirectional=True
+        )
+
+        # Self attention module
+        self.i_to_avf_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
+        self.v1_to_v6_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
+        self.init_weight()
+
+        # Projection head
+        self.i_to_avf_proj = nn.Linear(d_hid*2, 64)
+        self.v1_to_v6_proj = nn.Linear(d_hid*2, 64)
+        
+        # Classifier head
+        self.classifier = nn.Sequential(
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_classes)
+        )
+
+    def init_weight(self):
+        for m in self._modules:
+            if type(m) == nn.Linear:
+                torch.nn.init.xavier_uniform(m.weight)
+                m.bias.data.fill_(0.01)
+            if type(m) == nn.Conv1d:
+                torch.nn.init.xavier_uniform(m.weight)
+                m.bias.data.fill_(0.01)
+
+    def forward(self, x_i_to_avf, x_v1_to_v6):
+        # 1. Conv forward
+        x_i_to_avf = self.i_to_avf_conv(x_i_to_avf)
+        x_v1_to_v6 = self.v1_to_v6_conv(x_v1_to_v6)
+        # 2. Rnn forward
+        x_i_to_avf, _ = self.i_to_avf_rnn(x_i_to_avf)
+        x_v1_to_v6, _ = self.v1_to_v6_rnn(x_v1_to_v6)
+        # 3. Attention
+        if self.en_att:
+            x_i_to_avf = self.i_to_avf_att(x_i_to_avf)
+            x_v1_to_v6 = self.v1_to_v6_att(x_v1_to_v6)
+        # 4. Average pooling
+        x_i_to_avf = torch.mean(x_i_to_avf, axis=1)
+        x_v1_to_v6 = torch.mean(x_v1_to_v6, axis=1)
+        # 5. Projection
+        x_i_to_avf = self.i_to_avf_proj(x_i_to_avf)
+        x_v1_to_v6 = self.v1_to_v6_proj(x_v1_to_v6)
+        # 6. MM embedding and predict
+        x_mm = torch.concat((x_i_to_avf, x_v1_to_v6), dim=1)
+        preds = self.classifier(x_mm)
+        return preds
+
+
 class Conv1dEncoder(nn.Module):
     def __init__(
         self,
