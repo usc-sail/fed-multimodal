@@ -235,7 +235,11 @@ if __name__ == '__main__':
         audio_dict = dm.load_audio_feat(client_id=client_id)
         video_dict = dm.load_video_feat(client_id=client_id)
         shuffle = False if client_id in ['dev', 'test'] else True
-        dataloader_dict[client_id] = dm.set_dataloader(audio_dict, video_dict, shuffle=shuffle)
+        dataloader_dict[client_id] = dm.set_dataloader(
+            audio_dict, 
+            video_dict, 
+            shuffle=shuffle
+        )
 
     # We perform 5 fold experiments with 5 seeds
     for fold_idx in range(1, 4):
@@ -299,7 +303,7 @@ if __name__ == '__main__':
             # 2. aggregate, load new global weights
             server.average_weights()
             logging.info('---------------------------------------------------------')
-            server.log_result(
+            server.log_classification_result(
                 data_split='train', 
                 metric='acc'
             )
@@ -308,7 +312,7 @@ if __name__ == '__main__':
                     # 3. Perform the validation on dev set
                     server.inference(dataloader_dict['dev'])
                     server.result_dict[epoch]['dev'] = server.result
-                    server.log_result(
+                    server.log_classification_result(
                         data_split='dev', 
                         metric='acc'
                     )
@@ -316,7 +320,7 @@ if __name__ == '__main__':
                     # 4. Perform the test on holdout set
                     server.inference(dataloader_dict['test'])
                     server.result_dict[epoch]['test'] = server.result
-                    server.log_result(
+                    server.log_classification_result(
                         data_split='test', 
                         metric='acc'
                     )
