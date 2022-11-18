@@ -12,6 +12,7 @@ import os.path as osp
 from PIL import Image
 from tqdm import tqdm
 from pathlib import Path
+from moviepy.editor import *
 from torchvision import models, transforms
 from transformers import BertTokenizer, BertModel
 from transformers import AlbertTokenizer, AlbertModel
@@ -88,10 +89,10 @@ class feature_manager():
         rawframes.sort()
         if self.args.dataset == "ucf101":
             # downsample to 1 sec per frame
-            rawframes = rawframes[::5]
+            rawframes = rawframes[::25]
         elif self.args.dataset == "ucf51":
             # downsample to every 10 frames
-            rawframes = rawframes[::2]
+            rawframes = rawframes[::10]
         
         input_data_list = list()
         for rawframe in rawframes:
@@ -100,6 +101,42 @@ class feature_manager():
             input_tensor = self.img_transform(input_image)
             input_data_list.append(input_tensor.detach().cpu().numpy())
         
+        with torch.no_grad():
+            input_data = torch.Tensor(np.array(input_data_list)).to(self.device)
+            if len(input_data) == 0: return None
+            features = self.model(input_data).detach().cpu().numpy()
+        if max_len != -1: features = features[:max_len]
+        return features
+    
+    def extract_frame_features(
+        self, 
+        video_path: str,
+        max_len: int=10
+    ) -> (np.array):
+        """
+        Extract the framewise feature from video streams
+        :param video_path: video paths
+        :return: return features
+        """
+        try:
+            clip = VideoFileClip(str(video_path))
+        except:
+            raise FileNotFoundError
+        
+        # read fps and total frames
+        fps = int(clip.fps)
+        nframes = clip.reader.nframes
+        # pdb.set_trace()
+        
+        # read fps and total frames read frames data
+        input_data_list = list()
+        for frame in clip.iter_frames():
+            input_tensor = self.img_transform(Image.fromarray(frame))
+            input_data_list.append(input_tensor.detach().cpu().numpy())
+        # just use one frame per second
+        input_data_list = input_data_list[::fps]
+        
+        # extract pretrained feature
         with torch.no_grad():
             input_data = torch.Tensor(np.array(input_data_list)).to(self.device)
             if len(input_data) == 0: return None
@@ -169,7 +206,9 @@ class feature_manager():
             )
         # raise error if file not exists
         if Path.exists(partition_path) == False: 
-            raise FileNotFoundError('No partition file exists at the location specified')
+            raise FileNotFoundError(
+                'No partition file exists at the location specified'
+            )
         # read file
         with open(str(partition_path), "rb") as f:  
             partition_dict = pickle.load(f)

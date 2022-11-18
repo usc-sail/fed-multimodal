@@ -232,13 +232,23 @@ if __name__ == '__main__':
     dataloader_dict = dict()
     logging.info('Reading Data')
     for client_id in tqdm(dm.client_ids):
-        audio_dict = dm.load_audio_feat(client_id=client_id)
-        video_dict = dm.load_video_feat(client_id=client_id)
+        # load audio features
+        audio_dict = dm.load_audio_feat(
+            client_id=client_id
+        )
+        # load video features
+        video_dict = dm.load_video_feat(
+            client_id=client_id
+        )
         shuffle = False if client_id in ['dev', 'test'] else True
+        client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=int(client_id))
         dataloader_dict[client_id] = dm.set_dataloader(
             audio_dict, 
             video_dict, 
-            shuffle=shuffle
+            shuffle=shuffle,
+            client_sim_dict=client_sim_dict,
+            default_feat_shape_a=np.array([150, constants.feature_len_dict["mfcc"]]),
+            default_feat_shape_b=np.array([3, constants.feature_len_dict["mobilenet_v2"]])
         )
 
     # We perform 5 fold experiments with 5 seeds

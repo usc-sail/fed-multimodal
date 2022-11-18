@@ -8,7 +8,6 @@ The framework figure:
 </div>
 
 
-
 ## Applications supported
 * #### Cross-Device Applications
     * Speech Emotion Recognition
@@ -34,7 +33,7 @@ Dataset | Modality | Paper | Num. of Clients | Split | Alpha | Best Top-1 Acc (F
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 UCF101 | A+V | [arxiv](https://arxiv.org/abs/1212.0402) | 200 | Manual | 1.0 <br> 0.25 <br> 0.1 | 69.87% <br> 68.25% <br> 66.42% | 94.57% <br> 93.61% <br> 93.81% | 0.1 <br> | 300 <br> | 3 folds from dataset
 MIT10 (Subset of MIT) | A+V | [arxiv](https://arxiv.org/abs/1801.03150) | 200 | Manual | 1.0 <br> 0.25 <br> 0.1 | 55.90% <br> 50.56% <br> 45.51% | 93.89% <br> 92.87% <br> 85.11% | 0.1 | 300 | 3 folds with 3 seeds
-MIT51 (Subset of MIT) | A+V | [arxiv](https://arxiv.org/abs/1801.03150) | 1000 | Manual | 1.0 <br> 0.25 <br> 0.1 | 34.17% <br> 32.48% <br> 33.46% | 64.76% <br> 63.71% <br> 63.54% | 0.1 | 300 | 3 folds with 3 seeds
+MIT51 (Subset of MIT) | A+V | [arxiv](https://arxiv.org/abs/1801.03150) | 1000 | Manual | 1.0 <br> 0.25 <br> 0.1 | 34.17% <br> 32.48% <br> 32.17% | 64.76% <br> 63.71% <br> 62.04% | 0.1 | 300 | 3 folds with 3 seeds
 
 ### Human Acitivity Recognition (Manual Split/Natural Split)
 Dataset | Modality | Paper | Num. of Clients | Split | Alpha | Best UAR (Federated) | Learning Rate | Global Epoch | Fold |
