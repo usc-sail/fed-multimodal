@@ -71,13 +71,13 @@ class MMDatasetGenerator(Dataset):
         data_b = self.modalityB[item][-1]
         label = torch.tensor(self.modalityA[item][-2])
         
-        # modality A
+        # modality A, if missing replace with 0s
         if data_a is not None: 
             data_a = torch.tensor(data_a)
         else:
             data_a = torch.tensor(np.zeros(self.default_feat_shape_a))
 
-        # modality B
+        # modality B, if missing replace with 0s
         if data_b is not None: 
             data_b = torch.tensor(data_b)
         else:

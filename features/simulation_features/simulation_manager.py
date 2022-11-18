@@ -21,9 +21,25 @@ class simulation_manager():
         # reading partition
         if self.args.dataset == "ucf101":
             alpha_str = str(alpha).replace('.', '')
-            partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'fold{fold_idx}', f'partition_alpha{alpha_str}.pkl')
+            partition_path = Path(self.args.output_dir).joinpath(
+                "partition", 
+                self.args.dataset, 
+                f'fold{fold_idx}', 
+                f'partition_alpha{alpha_str}.pkl'
+            )
+        if self.args.dataset in ["mit51"]:
+            alpha_str = str(alpha).replace('.', '')
+            partition_path = Path(self.args.output_dir).joinpath(
+                "partition", 
+                self.args.dataset, 
+                f'partition_alpha{alpha_str}.pkl'
+            )
         if self.args.dataset == "meld":
-            partition_path = Path(self.args.output_dir).joinpath("partition", self.args.dataset, f'partition.pkl')
+            partition_path = Path(self.args.output_dir).joinpath(
+                "partition", 
+                self.args.dataset, 
+                f'partition.pkl'
+            )
         
         with open(str(partition_path), "rb") as f: 
             partition_dict = pickle.load(f)

@@ -24,3 +24,17 @@ num_class_dict = {
     'extrasensory':         6,
     'extrasensory_watch':   6
 }
+
+
+# define max feature len in temporal
+max_class_dict = {
+    'ucf101':               51, 
+    'mit101':               101, 
+    'mit10':                10, 
+    'mit51':                51, 
+    'meld':                 4,
+    'uci-har':              6,
+    'ptb-xl':               5,
+    'extrasensory':         6,
+    'extrasensory_watch':   6
+}
