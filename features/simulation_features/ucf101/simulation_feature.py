@@ -23,7 +23,8 @@ def parse_args():
         '--output_dir', 
         default='/media/data/projects/speech-privacy/fed-multimodal/',
         type=str, 
-        help='output feature directory')
+        help='output feature directory'
+    )
     
     parser.add_argument(
         "--alpha",
@@ -78,7 +79,8 @@ def parse_args():
         '--label_nosiy', 
         type=bool, 
         default=False,
-        help='clean label or nosiy label')
+        help='clean label or nosiy label'
+    )
     
     parser.add_argument(
         "--en_label_nosiy",
@@ -109,9 +111,11 @@ if __name__ == '__main__':
     # save for later uses
     for fold_idx in range(3):
         # define output path
-        output_data_path = Path(args.output_dir).joinpath('simulation_feature', 
-                                                          args.dataset, 
-                                                          f'fold{fold_idx+1}')
+        output_data_path = Path(args.output_dir).joinpath(
+            'simulation_feature', 
+            args.dataset, 
+            f'fold{fold_idx+1}'
+        )
         Path.mkdir(output_data_path, parents=True, exist_ok=True)
         partition_dict = sm.fetch_partition(fold_idx+1, alpha=args.alpha)
         

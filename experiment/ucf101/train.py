@@ -203,7 +203,9 @@ if __name__ == '__main__':
 
     # data manager
     dm = DataloadManager(args)
-    dm.get_simulation_setting(alpha=args.alpha)
+    dm.get_simulation_setting(
+        alpha=args.alpha
+    )
     
     # find device
     device = torch.device("cuda:1") if torch.cuda.is_available() else "cpu"
@@ -214,9 +216,13 @@ if __name__ == '__main__':
     # We perform 3 fold experiments
     for fold_idx in range(1, 4):
         # load simulation feature
-        dm.load_sim_dict(fold_idx=fold_idx)
+        dm.load_sim_dict(
+            fold_idx=fold_idx
+        )
         # load all data
-        dm.get_client_ids(fold_idx=fold_idx)
+        dm.get_client_ids(
+            fold_idx=fold_idx
+        )
         # set dataloaders
         dataloader_dict = dict()
         logging.info('Loading Data')
@@ -230,7 +236,15 @@ if __name__ == '__main__':
                 fold_idx=fold_idx
             )
             shuffle = False if client_id in ['dev', 'test'] else True
-            dataloader_dict[client_id] = dm.set_dataloader(audio_dict, video_dict, shuffle=shuffle)
+            client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=int(client_id))
+            dataloader_dict[client_id] = dm.set_dataloader(
+                audio_dict, 
+                video_dict,
+                client_sim_dict=client_sim_dict,
+                default_feat_shape_a=np.array([500, constants.feature_len_dict["mfcc"]]),
+                default_feat_shape_b=np.array([10, constants.feature_len_dict["mobilenet_v2"]]),
+                shuffle=shuffle
+            )
         
         # number of clients
         client_ids = [client_id for client_id in dm.client_ids if client_id not in ['dev', 'test']]

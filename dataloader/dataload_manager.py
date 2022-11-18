@@ -46,13 +46,20 @@ class MMDatasetGenerator(Dataset):
         self, 
         modalityA, 
         modalityB, 
+        default_feat_shape_a,
+        default_feat_shape_b,
         data_len, 
         simulate_feat=None
     ):
+        
+        self.data_len = data_len
+        
         self.modalityA = modalityA
         self.modalityB = modalityB
         self.simulate_feat = simulate_feat
-        self.data_len = data_len
+        
+        self.default_feat_shape_a = default_feat_shape_a
+        self.default_feat_shape_b = default_feat_shape_b
 
     def __len__(self):
         return self.data_len
@@ -67,10 +74,14 @@ class MMDatasetGenerator(Dataset):
         # modality A
         if data_a is not None: 
             data_a = torch.tensor(data_a)
+        else:
+            data_a = torch.tensor(np.zeros(self.default_feat_shape_a))
 
         # modality B
         if data_b is not None: 
             data_b = torch.tensor(data_b)
+        else:
+            data_b = torch.tensor(np.zeros(self.default_feat_shape_b))
         return data_a, data_b, label
 
 
@@ -373,31 +384,57 @@ class DataloadManager():
         with open(str(v1_to_v6_data_path), "rb") as f:  v1_to_v6_data_dict = pickle.load(f)
         return i_to_avf_data_dict, v1_to_v6_data_dict
 
+    def get_client_sim_dict(
+            self, 
+            client_id
+        ):
+        """
+        Set dataloader for training/dev/test.
+        :param client_id: client_id
+        :return: dataloader: torch dataloader
+        """
+        if self.sim_data:
+            return self.sim_data[client_id]
+        return None
+        
     def set_dataloader(
             self, 
             data_a: dict,
-            data_b: dict, 
+            data_b: dict,
+            default_feat_shape_a: np.array=np.array([0, 0]),
+            default_feat_shape_b: np.array=np.array([0, 0]),
+            client_sim_dict: dict=None,
             shuffle: bool=False
         ) -> (DataLoader):
         """
         Set dataloader for training/dev/test.
         :param data_a: modality A data
         :param data_b: modality B data
+        :param default_feat_shape_a: default input shape for modality A, fill 0 in missing modality case
+        :param default_feat_shape_b: default input shape for modality B, fill 0 in missing modality case
         :param shuffle: shuffle flag for dataloader, True for training; False for dev and test
         :return: dataloader: torch dataloader
         """
         # modify data based on simulation
-        if self.sim_data is not None:
-            for idx in range(len(self.sim_data[client_id])):
+        if client_sim_dict is not None:
+            for idx in range(len(client_sim_dict)):
                 # read simulate feature
-                sim_data = self.sim_data[client_id][idx][-1]
+                sim_data = client_sim_dict[idx][-1]
+                # pdb.set_trace()
                 # read modality A
-                if read[0] == 1: data_a[idx][-1] = None
+                if sim_data[0] == 1: data_a[idx][-1] = None
                 # read modality B
-                if read[1] == 1: data_b[idx][-1] = None
+                if sim_data[1] == 1: data_b[idx][-1] = None
                 # label noise
-                data_a[idx][-2] = read[2]
-        data_ab = MMDatasetGenerator(data_a, data_b, len(data_a))
+                data_a[idx][-2] = sim_data[2]
+                
+        data_ab = MMDatasetGenerator(
+            data_a, 
+            data_b,
+            default_feat_shape_a,
+            default_feat_shape_b,
+            len(data_a)
+        )
         if shuffle:
             # we use args input batch size for train, typically set as 16 in FL setup
             dataloader = DataLoader(
