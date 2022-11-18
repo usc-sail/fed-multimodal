@@ -17,7 +17,11 @@ class simulation_manager():
     def __init__(self, args: dict):
         self.args = args
         
-    def fetch_partition(self, fold_idx=1, alpha=0.5):
+    def fetch_partition(
+        self, 
+        fold_idx=1, 
+        alpha=0.5
+    ):
         # reading partition
         if self.args.dataset == "ucf101":
             alpha_str = str(alpha).replace('.', '')
@@ -27,7 +31,7 @@ class simulation_manager():
                 f'fold{fold_idx}', 
                 f'partition_alpha{alpha_str}.pkl'
             )
-        if self.args.dataset in ["mit51"]:
+        if self.args.dataset in ["mit10", "mit51"]:
             alpha_str = str(alpha).replace('.', '')
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 
@@ -53,7 +57,11 @@ class simulation_manager():
         np.random.seed(seed)
         return np.random.binomial(size=size, n=1, p=self.args.missing_modailty_rate)[0]
     
-    def label_noise_matrix(self, seed, class_num=51):
+    def label_noise_matrix(
+        self, 
+        seed, 
+        class_num=51
+    ):
         # create matrix for each user
         np.random.seed(seed)
         noisy_level = self.args.label_nosiy_level
@@ -108,7 +116,12 @@ class simulation_manager():
                 alpha_str = str(self.args.alpha).replace('.', '')
                 self.setting_str += f'_alpha{alpha_str}'
         
-    def simulation(self, data_dict, seed, class_num=51):
+    def simulation(
+        self, 
+        data_dict: dict, 
+        seed: int, 
+        class_num: int=51
+    ) -> (dict):
         # 1. simulate modality missing
         if self.args.missing_modality == True:
             modality_a_missing = self.simulate_missing_modality(seed=seed)
