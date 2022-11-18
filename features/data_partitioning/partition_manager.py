@@ -37,6 +37,9 @@ class partition_manager():
                 raise FileNotFoundError('No files exists at the location specified')
             self.train_file_list.sort()
             self.test_file_list.sort()
+        elif self.args.dataset == "crema_d":
+            self.file_list = [x for x in Path(self.args.raw_data_dir).joinpath("AudioWAV").iterdir() if '.wav' in x.parts[-1]]
+            self.file_list.sort()
             
     def fetch_label_dict(self):
         # fetch unique labels
@@ -94,6 +97,15 @@ class partition_manager():
                 'STTC': 2, 
                 'CD': 3,
                 'HYP': 4
+            }
+        elif self.args.dataset == "crema_d":
+            self.label_dict = {
+                "A": 0, 
+                "S": 1, 
+                "H": 2, 
+                "N": 3, 
+                "F": 4, 
+                "D": 5
             }
         elif self.args.dataset == 'uci-har':
             self.label_dict = {k: i for i, k in enumerate(np.arange(6))}
