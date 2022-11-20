@@ -19,6 +19,7 @@ num_class_dict = {
     'mit10':                10, 
     'mit51':                51, 
     'meld':                 4,
+    'crema_d':              6,
     'uci-har':              6,
     'ptb-xl':               5,
     'extrasensory':         6,
@@ -30,7 +31,7 @@ num_class_dict = {
 max_class_dict = {
     'ucf101':               51, 
     'mit101':               101, 
-    'mit10':                10, 
+    'mit10':                10,
     'mit51':                51, 
     'meld':                 4,
     'uci-har':              6,

@@ -25,7 +25,11 @@ from dataload_manager import DataloadManager
 
 # define logging console
 import logging
-logging.basicConfig(format='%(asctime)s %(levelname)-3s ==> %(message)s', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
+    level=logging.INFO, 
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 
 def set_seed(seed):
@@ -43,7 +47,8 @@ def parse_args():
         '--data_dir', 
         default='/media/data/projects/speech-privacy/fed-multimodal/',
         type=str, 
-        help='output feature directory')
+        help='output feature directory'
+    )
     
     parser.add_argument(
         '--audio_feat', 
@@ -298,7 +303,11 @@ if __name__ == '__main__':
                 )
                 client.update_weights()
                 # server append updates
-                server.save_train_updates(copy.deepcopy(client.get_parameters()), client.result['sample'], client.result)
+                server.save_train_updates(
+                    copy.deepcopy(client.get_parameters()), 
+                    client.result['sample'], 
+                    client.result
+                )
                 del client
             
             # 2. aggregate, load new global weights

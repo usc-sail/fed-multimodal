@@ -234,8 +234,12 @@ if __name__ == '__main__':
     dataloader_dict = dict()
     logging.info('Reading Data')
     for client_id in tqdm(dm.client_ids):
-        audio_dict = dm.load_audio_feat(client_id=client_id)
-        video_dict = dm.load_video_feat(client_id=client_id)
+        audio_dict = dm.load_audio_feat(
+            client_id=client_id
+        )
+        video_dict = dm.load_video_feat(
+            client_id=client_id
+        )
         shuffle = False if client_id in ['dev', 'test'] else True
         client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=int(client_id))
         dataloader_dict[client_id] = dm.set_dataloader(

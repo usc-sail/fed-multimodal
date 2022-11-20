@@ -1,8 +1,9 @@
 # Author: Tiantian Feng
 # USC SAIL lab, tiantiaf@usc.edu
+import glob
+import json
 import torch
 import pickle
-import glob
 import random
 import pdb, os
 import torchaudio
@@ -134,6 +135,7 @@ class feature_manager():
             input_tensor = self.img_transform(Image.fromarray(frame))
             input_data_list.append(input_tensor.detach().cpu().numpy())
         # just use one frame per second
+        input_data_list = input_data_list[:-2]
         input_data_list = input_data_list[::fps]
         
         # extract pretrained feature
@@ -150,7 +152,8 @@ class feature_manager():
         label_str: str='',
         frame_length: int=40,
         frame_shift:  int=20,
-        max_len: int=-1
+        max_len: int=-1,
+        en_znorm: bool=True
     ) -> (np.array):
         """Extract the mfcc feature from audio streams."""
         audio, sr = torchaudio.load(str(audio_path))
@@ -161,14 +164,16 @@ class feature_manager():
                     num_mel_bins=80,
                     window_type="hamming")
         features = features.detach().cpu().numpy()
-        features = (features - np.mean(features, axis=0)) / (np.std(features, axis=0) + 1e-5)
+        if en_znorm:
+            features = (features - np.mean(features, axis=0)) / (np.std(features, axis=0) + 1e-5)
         if max_len != -1: features = features[:max_len]
         return features
     
     def fetch_partition(
         self, 
         fold_idx: int=1, 
-        alpha: float=0.5
+        alpha: float=0.5,
+        file_ext: str="json"
     ) -> (dict):
         """
         Read partition file
@@ -183,35 +188,39 @@ class feature_manager():
                 "partition", 
                 self.args.dataset, 
                 f'fold{fold_idx}', 
-                f'partition_alpha{alpha_str}.pkl'
+                f'partition_alpha{alpha_str}.{file_ext}'
             )
         elif self.args.dataset in ["extrasensory", "extrasensory_watch", "crema_d"]:
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 
                 self.args.dataset, 
                 f'fold{fold_idx}', 
-                f'partition.pkl'
+                f'partition.{file_ext}'
             )
         elif self.args.dataset in ["mit10", "mit51", "uci-har"]:
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 
                 self.args.dataset, 
-                f'partition_alpha{alpha_str}.pkl'
+                f'partition_alpha{alpha_str}.{file_ext}'
             )
         elif self.args.dataset in ["meld", "ptb-xl"]:
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 
                 self.args.dataset, 
-                f'partition.pkl'
+                f'partition.{file_ext}'
             )
         # raise error if file not exists
         if Path.exists(partition_path) == False: 
             raise FileNotFoundError(
                 'No partition file exists at the location specified'
             )
-        # read file
-        with open(str(partition_path), "rb") as f:  
-            partition_dict = pickle.load(f)
+        # read file based on pkl, json
+        if file_ext == "pkl":
+            with open(str(partition_path), "rb") as f:  
+                partition_dict = pickle.load(f)
+        else:
+            with open(str(partition_path), "r") as f:  
+                partition_dict = json.load(f)
         return partition_dict
 
     def extract_text_feature(

@@ -77,7 +77,9 @@ class partition_manager():
                 'neutral': 0, 
                 'sadness': 1, 
                 'joy': 2, 
-                'anger': 3
+                'anger': 3,
+                'fear': 4,
+                'disgust': 5
             }
         elif self.args.dataset in ['extrasensory', 'extrasensory_watch']:
             self.label_dict = {

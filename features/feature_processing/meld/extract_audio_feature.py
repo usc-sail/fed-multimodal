@@ -55,10 +55,10 @@ if __name__ == '__main__':
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
     
     # initialize feature processer
-    feature_manager = feature_manager(args)
+    fm = feature_manager(args)
     
     # fetch all files for processing
-    partition_dict = feature_manager.fetch_partition()
+    partition_dict = fm.fetch_partition()
     print('Reading videos from folder: ', args.raw_data_dir)
     print('Total number of videos found: ', len(partition_dict.keys()))
     
@@ -71,16 +71,19 @@ if __name__ == '__main__':
             speaker_data = list()
             for idx in tqdm(range(len(partition_dict[client]))):
                 file_path = partition_dict[client][idx][1]
-                features = feature_manager.extract_mfcc_features(audio_path=file_path,
-                                                                 frame_length=25,
-                                                                 frame_shift=10,
-                                                                 max_len=1000)
+                features = fm.extract_mfcc_features(
+                    audio_path=file_path,
+                    frame_length=25,
+                    frame_shift=10,
+                    max_len=1000,
+                    en_znorm=False
+                )
                 data_dict[idx][-1] = features
                 speaker_data = features if len(speaker_data) == 0 else np.append(speaker_data, features, axis=0)
             # normalize speaker data
             speaker_mean, speaker_std = np.mean(speaker_data, axis=0), np.std(speaker_data, axis=0)
             for idx in tqdm(range(len(data_dict))):
-                data_dict[idx][-1] = (features - speaker_mean) / (speaker_std + 1e-5)
+                data_dict[idx][-1] = (data_dict[idx][-1] - speaker_mean) / (speaker_std + 1e-5)
         else:
             # find speakers first and its data idx
             print('read speakers')
@@ -97,16 +100,19 @@ if __name__ == '__main__':
                 speaker_data = list()
                 for idx in speaker_dict[speaker_id]:
                     file_path = partition_dict[client][idx][1]
-                    features = feature_manager.extract_mfcc_features(audio_path=file_path,
-                                                                     frame_length=25,
-                                                                     frame_shift=10,
-                                                                     max_len=1000)
+                    features = fm.extract_mfcc_features(
+                        audio_path=file_path,
+                        frame_length=25,
+                        frame_shift=10,
+                        max_len=1000,
+                        en_znorm=False
+                    )
                     data_dict[idx][-1] = features
                     speaker_data = features if len(speaker_data) == 0 else np.append(speaker_data, features, axis=0)
                 # normalize speaker data
                 speaker_mean, speaker_std = np.mean(speaker_data, axis=0), np.std(speaker_data, axis=0)
                 for idx in speaker_dict[speaker_id]:
-                    data_dict[idx][-1] = (features - speaker_mean) / (speaker_std + 1e-5)
+                    data_dict[idx][-1] = (data_dict[idx][-1] - speaker_mean) / (speaker_std + 1e-5)
 
         # pdb.set_trace()
         # saving features

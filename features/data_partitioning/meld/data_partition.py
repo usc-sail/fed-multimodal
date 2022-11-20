@@ -1,4 +1,5 @@
 import os
+import json
 import argparse
 import time, sys
 import numpy as np
@@ -99,7 +100,7 @@ if __name__ == '__main__':
     
     # fetch all labels
     pm.fetch_label_dict()
-    client_data_dict = dict()
+    partition_dict = dict()
 
     # partition
     train_dict = data_partition(args, split='train')
@@ -111,27 +112,31 @@ if __name__ == '__main__':
     client_keys.sort()
 
     for client_idx in range(len(train_dict)): 
-        client_data_dict[client_idx] = train_dict[client_keys[client_idx]]
+        partition_dict[client_idx] = train_dict[client_keys[client_idx]]
     
     # dev data
     client_keys = list(dev_dict.keys())
     client_keys.sort()
 
-    client_data_dict['dev'] = list()
+    partition_dict['dev'] = list()
     for client_idx in range(len(dev_dict)):
         client_key = client_keys[client_idx]
         for idx in range(len(dev_dict[client_key])): 
-            client_data_dict['dev'].append(dev_dict[client_key][idx])
+            partition_dict['dev'].append(dev_dict[client_key][idx])
     
     # dev data
     client_keys = list(test_dict.keys())
     client_keys.sort()
 
-    client_data_dict['test'] = list()
+    partition_dict['test'] = list()
     for client_idx in range(len(test_dict)):
         client_key = client_keys[client_idx]
         for idx in range(len(test_dict[client_key])):
-            client_data_dict['test'].append(test_dict[client_key][idx])
+            partition_dict['test'].append(test_dict[client_key][idx])
 
-    with open(output_data_path.joinpath(f'partition.pkl'), 'wb') as handle:
-        pickle.dump(client_data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    # dump the dictionary
+    with open(output_data_path.joinpath(f'partition.json'), "w") as handle:
+        json.dump(
+            partition_dict, 
+            handle
+        )

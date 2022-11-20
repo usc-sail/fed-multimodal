@@ -89,10 +89,10 @@ class DataloadManager():
     def __init__(self, args: dict):
         self.args = args
         # Initialize video feature paths
-        if self.args.dataset in ['ucf101', 'mit10', 'mit51', 'mit101']:
+        if self.args.dataset in ['ucf101', 'mit10', 'mit51', 'mit101', 'crema_d']:
             self.get_video_feat_path()
         # Initialize audio feature paths
-        if self.args.dataset in ['ucf101', 'mit10', 'mit51', 'mit101', 'meld']:
+        if self.args.dataset in ['ucf101', 'mit10', 'mit51', 'mit101', 'meld', 'crema_d']:
             self.get_audio_feat_path()
         # Initialize acc/gyro feature paths
         if self.args.dataset in ['uci-har', 'extrasensory']:
@@ -198,7 +198,12 @@ class DataloadManager():
             data_path = self.video_feat_path.joinpath(
                 f'alpha{alpha_str}'
             )
-        if self.args.dataset in ["uci-har"]:
+        elif self.args.dataset in ["crema_d"]:
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.video_feat_path.joinpath(
+                f'fold{fold_idx}'
+            )
+        elif self.args.dataset in ["uci-har"]:
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.acc_feat_path.joinpath(
                 f'alpha{alpha_str}'
@@ -238,6 +243,11 @@ class DataloadManager():
                 f'fold{fold_idx}', 
                 f'{client_id}.pkl'
             )
+        elif self.args.dataset == "crema_d":
+            data_path = self.audio_feat_path.joinpath(
+                f'fold{fold_idx}', 
+                f'{client_id}.pkl'
+            )
         elif self.args.dataset in ["mit10", "mit51"]:
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.audio_feat_path.joinpath(
@@ -266,6 +276,12 @@ class DataloadManager():
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(
                 f'alpha{alpha_str}', 
+                f'fold{fold_idx}',  
+                f'{client_id}.pkl'
+            )
+        elif self.args.dataset == "crema_d":
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.video_feat_path.joinpath(
                 f'fold{fold_idx}',  
                 f'{client_id}.pkl'
             )
@@ -465,7 +481,7 @@ class DataloadManager():
             self.sim_data = None
             return
         
-        if self.args.dataset == "ucf101":
+        if self.args.dataset in ["ucf101", "crema_d"]:
             data_path = Path(self.args.data_dir).joinpath(
                 'simulation_feature',
                 self.args.dataset, 
