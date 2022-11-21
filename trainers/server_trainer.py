@@ -308,6 +308,16 @@ class Server(object):
             row_df['macro_f'] = self.best_test_dict['macro_f']
         return row_df
 
+    def summarize_dict_results(self):
+        result = dict()
+        result['acc'] = self.best_test_dict['acc']
+        if not self.multilabel:
+            result['top5_acc'] = self.best_test_dict['top5_acc']
+            result['uar'] = self.best_test_dict['uar']
+        else:
+            result['macro_f'] = self.best_test_dict['macro_f']
+        return result
+
     def average_weights(self):
         """
         Returns the average of the weights.

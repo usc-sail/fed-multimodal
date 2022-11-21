@@ -1,3 +1,4 @@
+import json
 import torch
 import random
 import numpy as np
@@ -216,10 +217,9 @@ if __name__ == '__main__':
     dm.get_simulation_setting()
     
     # find device
-    device = torch.device("cuda:1") if torch.cuda.is_available() else "cpu"
+    device = torch.device("cuda:0") if torch.cuda.is_available() else "cpu"
     if torch.cuda.is_available(): print('GPU available, use GPU')
-
-    save_result_df = pd.DataFrame()
+    save_result_dict = dict()
 
     # load simulation feature
     dm.load_sim_dict()
@@ -232,10 +232,14 @@ if __name__ == '__main__':
         audio_dict = dm.load_audio_feat(client_id=client_id)
         text_dict = dm.load_text_feat(client_id=client_id)
         shuffle = False if client_id in ['dev', 'test'] else True
+        client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=client_id)
         dataloader_dict[client_id] = dm.set_dataloader(
             audio_dict, 
             text_dict, 
-            shuffle=shuffle
+            shuffle=shuffle,
+            client_sim_dict=client_sim_dict,
+            default_feat_shape_a=np.array([1000, constants.feature_len_dict["mfcc"]]),
+            default_feat_shape_b=np.array([10, constants.feature_len_dict["mobilebert"]])
         )
     # pdb.set_trace()
     # We perform 5 fold experiments with 5 seeds
@@ -264,8 +268,24 @@ if __name__ == '__main__':
             device=device, 
             criterion=criterion
         )
+
         server.initialize_log(fold_idx)
-        server.sample_clients(num_of_clients, sample_rate=args.sample_rate)
+        server.sample_clients(
+            num_of_clients, 
+            sample_rate=args.sample_rate
+        )
+
+        # save json path
+        save_json_path = Path(os.path.realpath(__file__)).parents[2].joinpath(
+            'result', 
+            args.dataset, 
+            server.model_setting_str
+        )
+        Path.mkdir(
+            save_json_path, 
+            parents=True, 
+            exist_ok=True
+        )
         
         # set seeds again
         set_seed(8*fold_idx)
@@ -328,16 +348,25 @@ if __name__ == '__main__':
             logging.info('---------------------------------------------------------')
 
         # Performance save code
-        row_df = server.summarize_results()
-        save_result_df = pd.concat([save_result_df, row_df])
-        
+        save_result_dict[f'fold{fold_idx}'] = server.summarize_dict_results()
+
+        # output to results
+        jsonString = json.dumps(save_result_dict, indent=4)
+        jsonFile = open(str(save_json_path.joinpath('result.json')), "w")
+        jsonFile.write(jsonString)
+        jsonFile.close()
+
     # Calculate the average of the 5-fold experiments
-    row_df = pd.DataFrame(index=['average'])
+    save_result_dict['average'] = dict()
     for metric in ['uar', 'acc', 'top5_acc']:
-        row_df[metric] = np.mean(save_result_df[metric])
-    save_result_df = pd.concat([save_result_df, row_df])
-    save_result_df.to_csv(str(Path(args.data_dir).joinpath(
-        'log', 
-        args.dataset, 
-        server.model_setting_str
-    ).joinpath('result.csv')))
+        result_list = list()
+        for key in save_result_dict:
+            if metric not in save_result_dict[key]: continue
+            result_list.append(save_result_dict[key][metric])
+        save_result_dict['average'][metric] = np.nanmean(result_list)
+    
+    # dump the dictionary
+    jsonString = json.dumps(save_result_dict, indent=4)
+    jsonFile = open(str(save_json_path.joinpath('result.json')), "w")
+    jsonFile.write(jsonString)
+    jsonFile.close()

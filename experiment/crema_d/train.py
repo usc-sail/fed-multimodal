@@ -1,3 +1,4 @@
+import json
 import torch
 import random
 import numpy as np
@@ -224,7 +225,7 @@ if __name__ == '__main__':
     device = torch.device("cuda:1") if torch.cuda.is_available() else "cpu"
     if torch.cuda.is_available(): print('GPU available, use GPU')
 
-    save_result_df = pd.DataFrame()
+    save_result_dict = dict()
 
     # We perform 3 fold experiments
     for fold_idx in range(1, 6):
@@ -288,6 +289,10 @@ if __name__ == '__main__':
             num_of_clients, 
             sample_rate=args.sample_rate
         )
+
+        # save json path
+        save_json_path = Path(os.path.realpath(__file__)).parents[2].joinpath('result', args.dataset, server.model_setting_str)
+        Path.mkdir(save_json_path, parents=True, exist_ok=True)
         
         # set seeds again
         set_seed(8)
@@ -347,18 +352,25 @@ if __name__ == '__main__':
             logging.info('---------------------------------------------------------')
 
         # Performance save code
-        row_df = server.summarize_results()
-        save_result_df = pd.concat([save_result_df, row_df])
+        save_result_dict[f'fold{fold_idx}'] = server.summarize_dict_results()
         
+        # output to results
+        jsonString = json.dumps(save_result_dict, indent=4)
+        jsonFile = open(str(save_json_path.joinpath('result.json')), "w")
+        jsonFile.write(jsonString)
+        jsonFile.close()
+
     # Calculate the average of the 5-fold experiments
-    row_df = pd.DataFrame(index=['average'])
+    save_result_dict['average'] = dict()
     for metric in ['uar', 'acc', 'top5_acc']:
-        row_df[metric] = np.mean(save_result_df[metric])
-    save_result_df = pd.concat([save_result_df, row_df])
-    save_result_df.to_csv(
-        str(Path(args.data_dir).joinpath(
-            'log', 
-            args.dataset, 
-            server.model_setting_str).joinpath('result.csv')
-        )
-    )
+        result_list = list()
+        for key in save_result_dict:
+            if metric not in save_result_dict[key]: continue
+            result_list.append(save_result_dict[key][metric])
+        save_result_dict['average'][metric] = np.nanmean(result_list)
+    
+    # dump the dictionary
+    jsonString = json.dumps(save_result_dict, indent=4)
+    jsonFile = open(str(save_json_path.joinpath('result.json')), "w")
+    jsonFile.write(jsonString)
+    jsonFile.close()

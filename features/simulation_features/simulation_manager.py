@@ -40,7 +40,7 @@ class simulation_manager():
                 self.args.dataset, 
                 f'partition_alpha{alpha_str}.{ext}'
             )
-        elif self.args.dataset == "meld":
+        elif self.args.dataset in ["meld", "ptb-xl"]:
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 
                 self.args.dataset, 
