@@ -41,8 +41,8 @@ def data_partition(
             err.append(i)
     print(f'Missing/Corrupt files for indices: {err}')
     df_label_cleaned = df_label.drop(err)
-    df_label_cleaned['Label'] = df_label_cleaned.Emotion.apply(lambda x: pm.label_dict[x] if x in pm.label_dict else 4)
-    df_label_cleaned = df_label_cleaned.loc[df_label_cleaned['Label']<4]
+    df_label_cleaned['Label'] = df_label_cleaned.Emotion.apply(lambda x: pm.label_dict[x] if x in pm.label_dict else 7)
+    df_label_cleaned = df_label_cleaned.loc[df_label_cleaned['Label']<7]
         
     df_label_cleaned['Path'] = df_label_cleaned.apply(lambda row: f"{data_path}/waves/dia{row.Dialogue_ID}_utt{row.Utterance_ID}.wav", axis=1)
     df_label_cleaned['Filename'] = df_label_cleaned.apply(lambda row: f"dia{row.Dialogue_ID}_utt{row.Utterance_ID}", axis=1)

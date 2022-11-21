@@ -19,6 +19,14 @@ from tqdm import tqdm
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[1])))
 from feature_manager import feature_manager
 
+# Define logging console
+import logging
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Extract text features')
@@ -59,8 +67,8 @@ if __name__ == '__main__':
     
     # fetch all files for processing
     partition_dict = fm.fetch_partition()
-    print('Reading videos from folder: ', args.raw_data_dir)
-    print('Total number of videos found: ', len(partition_dict.keys()))
+    logging.info(f'Reading text from folder: {args.raw_data_dir}')
+    logging.info(f'Total number of clients found: {len(partition_dict.keys())}')
     
     # extract data
     for client in partition_dict:

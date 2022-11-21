@@ -77,9 +77,7 @@ class partition_manager():
                 'neutral': 0, 
                 'sadness': 1, 
                 'joy': 2, 
-                'anger': 3,
-                'fear': 4,
-                'disgust': 5
+                'anger': 3
             }
         elif self.args.dataset in ['extrasensory', 'extrasensory_watch']:
             self.label_dict = {
@@ -105,9 +103,7 @@ class partition_manager():
                 "A": 0, 
                 "S": 1, 
                 "H": 2, 
-                "N": 3, 
-                "F": 4, 
-                "D": 5
+                "N": 3
             }
         elif self.args.dataset == 'uci-har':
             self.label_dict = {k: i for i, k in enumerate(np.arange(6))}

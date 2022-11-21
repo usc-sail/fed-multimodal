@@ -19,6 +19,14 @@ from tqdm import tqdm
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[1])))
 from feature_manager import feature_manager
 
+# Define logging console
+import logging
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Extract audio features')
@@ -51,7 +59,12 @@ def parse_args():
 if __name__ == '__main__':
     # read args
     args = parse_args()
-    output_data_path = Path(args.output_dir).joinpath('feature', 'audio', args.feature_type, args.dataset)
+    output_data_path = Path(args.output_dir).joinpath(
+        'feature', 
+        'audio', 
+        args.feature_type, 
+        args.dataset
+    )
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
     
     # initialize feature processer
@@ -59,9 +72,9 @@ if __name__ == '__main__':
     
     # fetch all files for processing
     partition_dict = fm.fetch_partition()
-    print('Reading videos from folder: ', args.raw_data_dir)
-    print('Total number of videos found: ', len(partition_dict.keys()))
-    
+    logging.info(f'Reading text from folder: {args.raw_data_dir}')
+    logging.info(f'Total number of clients found: {len(partition_dict.keys())}')
+
     # extract data
     for client in partition_dict:
         if Path.exists(output_data_path.joinpath(f'{client}.pkl')) == True: continue
@@ -69,8 +82,8 @@ if __name__ == '__main__':
         # normal client case each speaker is a client
         if client not in ['dev', 'test']:
             speaker_data = list()
-            for idx in tqdm(range(len(partition_dict[client]))):
-                file_path = partition_dict[client][idx][1]
+            for idx in tqdm(range(len(data_dict))):
+                file_path = data_dict[idx][1]
                 features = fm.extract_mfcc_features(
                     audio_path=file_path,
                     frame_length=25,
@@ -88,7 +101,7 @@ if __name__ == '__main__':
             # find speakers first and its data idx
             print('read speakers')
             speaker_dict = dict()
-            for idx in tqdm(range(len(partition_dict[client]))):
+            for idx in tqdm(range(len(data_dict))):
                 speaker_id = data_dict[idx][3]
                 if speaker_id not in speaker_dict:
                     speaker_dict[speaker_id] = list()
@@ -99,7 +112,7 @@ if __name__ == '__main__':
             for speaker_id in tqdm(speaker_dict):
                 speaker_data = list()
                 for idx in speaker_dict[speaker_id]:
-                    file_path = partition_dict[client][idx][1]
+                    file_path = data_dict[idx][1]
                     features = fm.extract_mfcc_features(
                         audio_path=file_path,
                         frame_length=25,
