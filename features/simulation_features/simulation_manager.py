@@ -1,6 +1,7 @@
+import json
+import glob
 import torch
 import pickle
-import glob
 import random
 import pdb, os
 import torchaudio
@@ -20,7 +21,8 @@ class simulation_manager():
     def fetch_partition(
         self, 
         fold_idx=1, 
-        alpha=0.5
+        alpha=0.5,
+        ext='json'
     ):
         # reading partition
         if self.args.dataset == "ucf101":
@@ -29,33 +31,55 @@ class simulation_manager():
                 "partition", 
                 self.args.dataset, 
                 f'fold{fold_idx}', 
-                f'partition_alpha{alpha_str}.pkl'
+                f'partition_alpha{alpha_str}.{ext}'
             )
-        if self.args.dataset in ["mit10", "mit51"]:
+        elif self.args.dataset in ["mit10", "mit51"]:
             alpha_str = str(alpha).replace('.', '')
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 
                 self.args.dataset, 
-                f'partition_alpha{alpha_str}.pkl'
+                f'partition_alpha{alpha_str}.{ext}'
             )
-        if self.args.dataset == "meld":
+        elif self.args.dataset == "meld":
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 
                 self.args.dataset, 
-                f'partition.pkl'
+                f'partition.{ext}'
             )
-        
-        with open(str(partition_path), "rb") as f: 
-            partition_dict = pickle.load(f)
+        elif self.args.dataset == "crema_d":
+            partition_path = Path(self.args.output_dir).joinpath(
+                "partition", 
+                self.args.dataset,
+                f'fold{fold_idx}',
+                f'partition.{ext}'
+            )
+        else:
+            raise ValueError(
+                f'Dataset not found {self.args.dataset}'
+            )
+
+        if ext == "pkl":
+            with open(str(partition_path), "rb") as f: 
+                partition_dict = pickle.load(f)
+        else:
+            with open(str(partition_path), "r") as f: 
+                partition_dict = json.load(f)
+
         return partition_dict
     
     def simulate_missing_modality(self, seed):
         np.random.seed(seed)
-        return np.random.binomial(size=1, n=1, p=self.args.missing_modailty_rate)[0]
+        return np.random.binomial(
+            size=1, 
+            n=1, 
+            p=self.args.missing_modailty_rate)[0]
     
     def simulate_missing_label(self, seed, size):
         np.random.seed(seed)
-        return np.random.binomial(size=size, n=1, p=self.args.missing_modailty_rate)[0]
+        return np.random.binomial(
+            size=size, 
+            n=1, 
+            p=self.args.missing_modailty_rate)[0]
     
     def label_noise_matrix(
         self, 
@@ -67,7 +91,10 @@ class simulation_manager():
         noisy_level = self.args.label_nosiy_level
         sparse_level = 0.4
         prob_matrix = [1-noisy_level] * class_num * class_num
-        sparse_elements = np.random.choice(class_num*class_num, round(class_num*(class_num-1)*sparse_level))
+        sparse_elements = np.random.choice(
+            class_num*class_num, 
+            round(class_num*(class_num-1)*sparse_level)
+        )
         for idx in range(len(sparse_elements)):
             while sparse_elements[idx]%(class_num+1) == 0:
                 sparse_elements[idx] = np.random.choice(class_num*class_num, 1)
@@ -124,19 +151,25 @@ class simulation_manager():
     ) -> (dict):
         # 1. simulate modality missing
         if self.args.missing_modality == True:
-            modality_a_missing = self.simulate_missing_modality(seed=seed)
-            modality_b_missing = self.simulate_missing_modality(seed=seed)
+            modality_a_missing = int(self.simulate_missing_modality(seed=seed))
+            modality_b_missing = int(self.simulate_missing_modality(seed=seed))
         else:
             modality_a_missing = 0
             modality_b_missing = 0
             
         # 2. generate label noise matrix for later
         if self.args.label_nosiy == True:
-            self.prob_matrix = self.label_noise_matrix(seed=seed, class_num=class_num)
+            self.prob_matrix = self.label_noise_matrix(
+                seed=seed, 
+                class_num=class_num
+            )
         
         # 3. missing label simulation
         if self.args.missing_label == True:
-            missing_label_array = self.simulate_missing_label(seed=seed, size=len(data_dict))
+            missing_label_array = self.simulate_missing_label(
+                seed=seed, 
+                size=len(data_dict)
+            )
         
         # 2. simulate others
         for idx in range(len(data_dict)):
@@ -144,17 +177,21 @@ class simulation_manager():
             if self.args.label_nosiy == True:
                 orginal_label = data_dict[idx][2]
                 np.random.seed(seed)
-                new_label = np.random.choice(class_num, p=self.prob_matrix[orginal_label])
+                new_label = np.random.choice(
+                    class_num, 
+                    p=self.prob_matrix[orginal_label]
+                )
             else:
                 new_label = data_dict[idx][2]
             
             # 2.2 simulate missing label
             if self.args.missing_label == True:
-                missing_label = missing_label_array[idx]
+                missing_label = int(missing_label_array[idx])
             else:
                 missing_label = 0
             
             # 2.3 simulation feature vector
             # [missing_modalityA, missing_modalityB, new_label, missing_label]
             data_dict[idx].append([modality_a_missing, modality_b_missing, new_label, missing_label])
+            
         return data_dict

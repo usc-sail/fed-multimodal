@@ -98,7 +98,7 @@ def parse_args():
     
     parser.add_argument(
         "--dataset", 
-        default="meld"
+        default="crema_d"
     )
     args = parser.parse_args()
     return args
@@ -110,28 +110,33 @@ if __name__ == '__main__':
     # initialize simulation manager
     sm = simulation_manager(args)
     
-    # define output path
-    output_data_path = Path(args.output_dir).joinpath(
-        'simulation_feature', 
-        args.dataset
-    )
-    Path.mkdir(
-        output_data_path, 
-        parents=True, 
-        exist_ok=True
-    )
+    for fold_idx in range(1, 6):
+        # define output path
+        output_data_path = Path(args.output_dir).joinpath(
+            'simulation_feature', 
+            args.dataset,
+            f'fold{fold_idx}'
+        )
+        Path.mkdir(
+            output_data_path, 
+            parents=True, 
+            exist_ok=True
+        )
 
-    partition_dict = sm.fetch_partition()
-    for client_idx, client in enumerate(partition_dict):
-        partition_dict[client] = sm.simulation(
-            partition_dict[client], 
-            seed=client_idx, 
-            class_num=constants.num_class_dict[args.dataset]
+        partition_dict = sm.fetch_partition(
+            fold_idx=fold_idx
         )
         
-    sm.get_simulation_setting()
-    if len(sm.setting_str) != 0:
-        jsonString = json.dumps(partition_dict, indent=4)
-        jsonFile = open(str(output_data_path.joinpath(f'{sm.setting_str}.json')), "w")
-        jsonFile.write(jsonString)
-        jsonFile.close()
+        for client_idx, client in enumerate(partition_dict):
+            partition_dict[client] = sm.simulation(
+                partition_dict[client], 
+                seed=client_idx, 
+                class_num=constants.num_class_dict[args.dataset]
+            )
+            
+        sm.get_simulation_setting()
+        if len(sm.setting_str) != 0:
+            jsonString = json.dumps(partition_dict, indent=4)
+            jsonFile = open(str(output_data_path.joinpath(f'{sm.setting_str}.json')), "w")
+            jsonFile.write(jsonString)
+            jsonFile.close()

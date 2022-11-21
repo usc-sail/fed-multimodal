@@ -1,6 +1,7 @@
+import json
+import glob
 import torch
 import pickle
-import glob
 import random
 import pdb, os
 import torchaudio
@@ -471,7 +472,11 @@ class DataloadManager():
             )
         return dataloader
     
-    def load_sim_dict(self, fold_idx: int=1):
+    def load_sim_dict(
+        self, 
+        fold_idx: int=1,
+        ext: str="json"
+    ):
         """
         Load simulation dictionary.
         :param fold_idx: fold index
@@ -486,17 +491,20 @@ class DataloadManager():
                 'simulation_feature',
                 self.args.dataset, 
                 f'fold{fold_idx}', 
-                f'{self.setting_str}.pkl'
+                f'{self.setting_str}.{ext}'
             )
         elif self.args.dataset in ["mit10", "mit51", "meld", "uci-har"]:
             data_path = Path(self.args.data_dir).joinpath(
                 'simulation_feature',
                 self.args.dataset,
-                f'{self.setting_str}.pkl'
+                f'{self.setting_str}.{ext}'
             )
-
-        with open(str(data_path), "rb") as f: 
-            self.sim_data = pickle.load(f)
+        if ext == "pkl":
+            with open(str(data_path), "rb") as f: 
+                self.sim_data = pickle.load(f)
+        else:
+            with open(str(data_path), "r") as f: 
+                self.sim_data = json.load(f)
     
     def get_simulation_setting(self, alpha=None):
         """

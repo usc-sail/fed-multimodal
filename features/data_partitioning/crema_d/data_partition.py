@@ -111,14 +111,6 @@ if __name__ == '__main__':
             parents=True, 
             exist_ok=True
         )
-        if Path.exists(output_data_path.joinpath(f'partition.json')) == True:
-            with open(str(output_data_path.joinpath(f'partition.json')), "r") as f: 
-                partition_dict = json.load(f)
-            jsonString = json.dumps(partition_dict, indent=4)
-            jsonFile = open(str(output_data_path.joinpath(f'partition.json')), "w")
-            jsonFile.write(jsonString)
-            jsonFile.close()
-            continue
 
         # train clients, test clients
         train_idx, test_idx = split_idx
@@ -154,8 +146,7 @@ if __name__ == '__main__':
                 partition_dict['test'].append(client_data_dict[client_id][file_id])
         
         # dump the dictionary
-        with open(output_data_path.joinpath(f'partition.json'), "w") as handle:
-            json.dump(
-                partition_dict, 
-                handle
-            )
+        jsonString = json.dumps(partition_dict, indent=4)
+        jsonFile = open(str(output_data_path.joinpath(f'partition.json')), "w")
+        jsonFile.write(jsonString)
+        jsonFile.close()

@@ -249,13 +249,13 @@ if __name__ == '__main__':
                 fold_idx=fold_idx
             )
             shuffle = False if client_id in ['dev', 'test'] else True
-            client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=int(client_id))
+            client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=client_id)
             dataloader_dict[client_id] = dm.set_dataloader(
                 audio_dict, 
                 video_dict,
                 client_sim_dict=client_sim_dict,
-                default_feat_shape_a=np.array([1000, constants.feature_len_dict["mfcc"]]),
-                default_feat_shape_b=np.array([10, constants.feature_len_dict["mobilenet_v2"]]),
+                default_feat_shape_a=np.array([600, constants.feature_len_dict["mfcc"]]),
+                default_feat_shape_b=np.array([6, constants.feature_len_dict["mobilenet_v2"]]),
                 shuffle=shuffle
             )
         

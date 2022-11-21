@@ -239,7 +239,7 @@ if __name__ == '__main__':
         )
     # pdb.set_trace()
     # We perform 5 fold experiments with 5 seeds
-    for fold_idx in range(1, 4):
+    for fold_idx in range(1, 6):
         # number of clients
         client_ids = [client_id for client_id in dm.client_ids if client_id not in ['dev', 'test']]
         num_of_clients = len(client_ids)
@@ -289,7 +289,11 @@ if __name__ == '__main__':
                 )
                 client.update_weights()
                 # server append updates
-                server.save_train_updates(copy.deepcopy(client.get_parameters()), client.result['sample'], client.result)
+                server.save_train_updates(
+                    copy.deepcopy(client.get_parameters()), 
+                    client.result['sample'], 
+                    client.result
+                )
                 del client
             
             # 2. aggregate, load new global weights
@@ -318,7 +322,9 @@ if __name__ == '__main__':
                     )
                 
                 logging.info('---------------------------------------------------------')
-                server.log_epoch_result(metric='uar')
+                server.log_epoch_result(
+                    metric='uar'
+                )
             logging.info('---------------------------------------------------------')
 
         # Performance save code
@@ -330,4 +336,8 @@ if __name__ == '__main__':
     for metric in ['uar', 'acc', 'top5_acc']:
         row_df[metric] = np.mean(save_result_df[metric])
     save_result_df = pd.concat([save_result_df, row_df])
-    save_result_df.to_csv(str(Path(args.data_dir).joinpath('log', args.dataset, server.model_setting_str).joinpath('result.csv')))
+    save_result_df.to_csv(str(Path(args.data_dir).joinpath(
+        'log', 
+        args.dataset, 
+        server.model_setting_str
+    ).joinpath('result.csv')))

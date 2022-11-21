@@ -125,6 +125,9 @@ if __name__ == '__main__':
                 )
 
     # iterate over folds
+    base_file_paths = os.listdir(base_data_path)
+    base_file_paths.sort()
+    
     for fold_idx in range(2, 6):
         # read partition keys
         partition_dict = fm.fetch_partition(
