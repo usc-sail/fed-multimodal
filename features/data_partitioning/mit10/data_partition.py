@@ -1,5 +1,6 @@
 # Author: Tiantian Feng
 # USC SAIL lab, tiantiaf@usc.edu
+import json
 import pickle
 import sys, os
 import re, pdb
@@ -81,8 +82,11 @@ def data_partition(args: dict):
     client_data_dict["dev"] = [train_data_dict[file_id] for file_id in dev_file_id]
     client_data_dict["test"] = [test_data_dict[file_id] for file_id in test_file_id]
     alpha_str = str(args.alpha).replace('.', '')
-    with open(output_data_path.joinpath(f'partition_alpha{alpha_str}.pkl'), 'wb') as handle:
-        pickle.dump(client_data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    jsonString = json.dumps(client_data_dict, indent=4)
+    jsonFile = open(str(output_data_path.joinpath(f'partition_alpha{alpha_str}.json')), "w")
+    jsonFile.write(jsonString)
+    jsonFile.close()
 
 if __name__ == "__main__":
     # read arguments

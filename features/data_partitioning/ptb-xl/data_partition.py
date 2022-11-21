@@ -1,5 +1,6 @@
 # Author: Tiantian Feng 
 # USC SAIL lab, tiantiaf@usc.edu
+import json
 import pickle
 import sys, os
 import re, pdb
@@ -94,7 +95,7 @@ def data_partition(args: dict):
             file_name = site_df.filename_lr.values[idx]
             # labels
             raw_labels = site_df.diagnostic_superclass.values[idx]
-            label = np.zeros(len(pm.label_dict))
+            label = list(np.zeros(len(pm.label_dict)))
             for raw_label in raw_labels: label[pm.label_dict[raw_label]] = 1
             partition_dict[site_id].append([f'{site_id}/{file_name}', file_name, label])
     
@@ -104,7 +105,7 @@ def data_partition(args: dict):
         file_name = dev_df.filename_lr.values[idx]
         # labels
         raw_labels = dev_df.diagnostic_superclass.values[idx]
-        label = np.zeros(len(pm.label_dict))
+        label = list(np.zeros(len(pm.label_dict)))
         for raw_label in raw_labels: label[pm.label_dict[raw_label]] = 1
         partition_dict['dev'].append([f'dev/{file_name}', file_name, label])
     
@@ -114,12 +115,14 @@ def data_partition(args: dict):
         file_name = test_df.filename_lr.values[idx]
         # labels
         raw_labels = test_df.diagnostic_superclass.values[idx]
-        label = np.zeros(len(pm.label_dict))
+        label = list(np.zeros(len(pm.label_dict)))
         for raw_label in raw_labels: label[pm.label_dict[raw_label]] = 1
         partition_dict['test'].append([f'test/{file_name}', file_name, label])
     
-    with open(str(output_data_path.joinpath(f'partition.pkl')), 'wb') as handle:
-        pickle.dump(partition_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    jsonString = json.dumps(partition_dict, indent=4)
+    jsonFile = open(str(output_data_path.joinpath(f'partition.json')), "w")
+    jsonFile.write(jsonString)
+    jsonFile.close()
 
 
 if __name__ == "__main__":
