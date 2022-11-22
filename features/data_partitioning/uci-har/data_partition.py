@@ -5,7 +5,6 @@ import pickle
 import re, pdb
 import sys, os
 import argparse
-import torchaudio
 import numpy as np
 import pandas as pd
 import os.path as osp
@@ -66,8 +65,8 @@ def data_partition(args: dict):
                 label = int(labels[data_idx])
                 key = f'{client_id}/{data_idx}'
                 # test case, save directly, else post processing
-                if data_type == 'test': partition_dict['test'].append([client_id, data_idx, label])
-                else: client_data_dict[key] = [client_id, data_idx, label]
+                if data_type == 'test': partition_dict['test'].append([str(client_id), int(data_idx), int(label)])
+                else: client_data_dict[key] = [str(client_id), int(data_idx), int(label)]
             # test case do nothing
             if data_type == 'test': continue
             

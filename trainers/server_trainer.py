@@ -65,6 +65,8 @@ class Server(object):
             filename_suffix=f'_{self.model_setting_str}'
         )
         
+        self.best_test_dict = list()
+        
     def get_model_setting(self):
         # Return model setting
         if self.args.dataset in ['mit10', 'mit51', 'ucf101', 'crema_d']:
@@ -88,7 +90,7 @@ class Server(object):
         model_setting_str += '_lr' + str(self.args.learning_rate).replace('.', '')
         model_setting_str += '_bs'+str(self.args.batch_size)
         model_setting_str += '_sr'+str(self.args.sample_rate).replace('.', '')
-        if self.args.att: model_setting_str += '_satt'
+        if self.args.att: model_setting_str += f'_{self.args.att_name}'
         
         # FL simulations: missing modality, label noise, missing labels
         if self.args.missing_modality == True:
@@ -144,6 +146,12 @@ class Server(object):
     def update(self, learning_rate, label_list, fed_setting):
         if fed_setting == 'fed_avg': self.update_weights(learning_rate, label_list)
         else: self.update_gradients(learning_rate, label_list)
+
+    def get_num_params(self):
+        model_parameters = filter(lambda p: p.requires_grad, self.global_model.parameters())
+        num_params = sum([np.prod(p.size()) for p in model_parameters]) / 1000
+        logging.info(f'Number of Parameters: {num_params} K')
+        return num_params
     
     def inference(self, dataloader):
         self.global_model.eval()
@@ -153,11 +161,17 @@ class Server(object):
         for batch_idx, batch_data in enumerate(dataloader):
                 
             self.global_model.zero_grad()
-            x_a, x_b, y = batch_data
+            x_a, x_b, mask_a, mask_b, y = batch_data
             x_a, x_b, y = x_a.to(self.device), x_b.to(self.device), y.to(self.device)
+            mask_a, mask_b = mask_a.to(self.device), mask_b.to(self.device)
             
             # forward
-            outputs = self.global_model(x_a.float(), x_b.float())
+            outputs = self.global_model(
+                x_a.float(), 
+                x_b.float(), 
+                mask_a.float(), 
+                mask_b.float()
+            )
             if not self.multilabel: 
                 outputs = torch.log_softmax(outputs, dim=1)
             loss = self.criterion(outputs, y)
@@ -258,7 +272,7 @@ class Server(object):
         self, 
         metric: str='acc'
     ):
-        if self.epoch == 0:
+        if len(self.best_test_dict) == 0:
             self.best_epoch = self.epoch
             self.best_dev_dict = self.result_dict[self.epoch]['dev']
             self.best_test_dict = self.result_dict[self.epoch]['test']
@@ -322,6 +336,9 @@ class Server(object):
         """
         Returns the average of the weights.
         """
+        # there are no samples, return
+        if len(self.num_samples_list) == 0: 
+            return
         total_num_samples = np.sum(self.num_samples_list)
         w_avg = copy.deepcopy(self.model_updates[0])
 

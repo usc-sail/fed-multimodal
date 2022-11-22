@@ -23,23 +23,26 @@ def collate_mm_fn_padd(batch):
     if batch[0][1] is not None: max_b_len = max(map(lambda x: x[1].shape[0], batch))
 
     # pad according to max_len
-    x_a, x_b, ys = list(), list(), list()
+    x_a, x_b, mask_a, mask_b, ys = list(), list(), list(), list(), list()
     for idx in range(len(batch)):
-        if batch[0][0] is not None:
-            x_a.append(pad_tensor(batch[idx][0], pad=max_a_len))
-        else:
-            x_a.append(None)
-        if batch[0][1] is not None:
-            x_b.append(pad_tensor(batch[idx][1], pad=max_b_len))
-        else:
-            x_b.append(None)
-        ys.append(batch[idx][2])
+        x_a.append(pad_tensor(batch[idx][0], pad=max_a_len))
+        x_b.append(pad_tensor(batch[idx][1], pad=max_b_len))
+        
+        if batch[idx][2]: mask_a.append(torch.tensor(np.ones(max_a_len)))
+        else: mask_a.append(torch.tensor(np.zeros(max_a_len)))
+
+        if batch[idx][3]: mask_b.append(torch.tensor(np.ones(max_b_len)))
+        else: mask_b.append(torch.tensor(np.zeros(max_b_len)))
+        
+        ys.append(batch[idx][-1])
     
     # stack all
-    if batch[0][0] is not None: x_a = torch.stack(x_a, dim=0)
-    if batch[0][1] is not None: x_b = torch.stack(x_b, dim=0)
+    x_a = torch.stack(x_a, dim=0)
+    x_b = torch.stack(x_b, dim=0)
+    mask_a = torch.stack(mask_a, dim=0)
+    mask_b = torch.stack(mask_b, dim=0)
     ys = torch.stack(ys, dim=0)
-    return x_a, x_b, ys
+    return x_a, x_b, mask_a, mask_b, ys
 
 
 class MMDatasetGenerator(Dataset):
@@ -49,8 +52,9 @@ class MMDatasetGenerator(Dataset):
         modalityB, 
         default_feat_shape_a,
         default_feat_shape_b,
-        data_len, 
-        simulate_feat=None
+        data_len: int, 
+        simulate_feat=None,
+        dataset: str=''
     ):
         
         self.data_len = data_len
@@ -61,29 +65,34 @@ class MMDatasetGenerator(Dataset):
         
         self.default_feat_shape_a = default_feat_shape_a
         self.default_feat_shape_b = default_feat_shape_b
+        self.dataset = dataset
 
     def __len__(self):
         return self.data_len
 
     def __getitem__(self, item):
-        
         # read modality
         data_a = self.modalityA[item][-1]
         data_b = self.modalityB[item][-1]
         label = torch.tensor(self.modalityA[item][-2])
         
-        # modality A, if missing replace with 0s
+        # modality A, if missing replace with 0s, and mask
         if data_a is not None: 
             data_a = torch.tensor(data_a)
-        else:
+            en_mask_a = False
+        else: 
             data_a = torch.tensor(np.zeros(self.default_feat_shape_a))
+            en_mask_a = True
 
         # modality B, if missing replace with 0s
         if data_b is not None: 
             data_b = torch.tensor(data_b)
-        else:
+            en_mask_b = False
+        else: 
             data_b = torch.tensor(np.zeros(self.default_feat_shape_b))
-        return data_a, data_b, label
+            en_mask_b = True
+
+        return data_a, data_b, en_mask_a, en_mask_b, label
 
 
 class DataloadManager():
@@ -445,12 +454,16 @@ class DataloadManager():
                 # label noise
                 data_a[idx][-2] = sim_data[2]
                 
+            if sim_data[0] == 1 and sim_data[1]:
+                return None
+                
         data_ab = MMDatasetGenerator(
             data_a, 
             data_b,
             default_feat_shape_a,
             default_feat_shape_b,
-            len(data_a)
+            len(data_a),
+            self.args.dataset
         )
         if shuffle:
             # we use args input batch size for train, typically set as 16 in FL setup
@@ -493,7 +506,7 @@ class DataloadManager():
                 f'fold{fold_idx}', 
                 f'{self.setting_str}.{ext}'
             )
-        elif self.args.dataset in ["mit10", "mit51", "meld", "uci-har"]:
+        elif self.args.dataset in ["mit10", "mit51", "meld", "uci-har", "ptb-xl"]:
             data_path = Path(self.args.data_dir).joinpath(
                 'simulation_feature',
                 self.args.dataset,

@@ -109,7 +109,7 @@ if __name__ == '__main__':
                 pickle.dump(data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     # base feature all extracted, and we want to explore other alpha cases
-    if len(client_file_paths) == len(partition_dict) and args.alpha != 1.0:
+    if len(client_file_paths) == len(partition_dict):
         train_dict = dict()
         logging.info('Read alpha=1.0 data')
         for client_file_path in tqdm(client_file_paths[:-2]):

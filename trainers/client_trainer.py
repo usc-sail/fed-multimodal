@@ -64,15 +64,18 @@ class Client(object):
                 
                 self.model.zero_grad()
                 optimizer.zero_grad()
-                x_a, x_b, y = batch_data
+                x_a, x_b, mask_a, mask_b, y = batch_data
+                x_a, x_b, y = x_a.to(self.device), x_b.to(self.device), y.to(self.device)
+                mask_a, mask_b = mask_a.to(self.device), mask_b.to(self.device)
                 
-                # missing modality case
-                if x_a[0] is not None: x_a = x_a.to(self.device)
-                if x_b[0] is not None: x_b = x_b.to(self.device)
-                y = y.to(self.device)
-                # pdb.set_trace()
                 # forward
-                outputs = self.model(x_a.float(), x_b.float())
+                outputs = self.model(
+                    x_a.float(), 
+                    x_b.float(), 
+                    mask_a.float(), 
+                    mask_b.float()
+                )
+
                 if not self.multilabel: 
                     outputs = torch.log_softmax(outputs, dim=1)
                 

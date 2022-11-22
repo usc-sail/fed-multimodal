@@ -1,6 +1,7 @@
 # Author: Tiantian Feng
 # USC SAIL lab, tiantiaf@usc.edu
 import pdb
+import json
 import glob
 import torch
 import random
@@ -137,6 +138,9 @@ if __name__ == '__main__':
     # output simulation
     sm.get_simulation_setting(alpha=args.alpha)
     if len(sm.setting_str) != 0:
-        with open(output_data_path.joinpath(f'{sm.setting_str}.pkl'), 'wb') as handle:
-            pickle.dump(partition_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        jsonString = json.dumps(partition_dict, indent=4)
+        jsonFile = open(str(output_data_path.joinpath(f'{sm.setting_str}.json')), "w")
+        jsonFile.write(jsonString)
+        jsonFile.close()
+
         

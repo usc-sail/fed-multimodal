@@ -23,13 +23,15 @@ class MMActionClassifier(nn.Module):
         num_classes: int,       # Number of classes 
         audio_input_dim: int,   # Audio feature input dim
         video_input_dim: int,   # Frame-wise video feature input dim
-        d_hid: int=64,          # Hidden Layer size
+        d_hid: int=128,         # Hidden Layer size
         n_filters: int=32,      # number of filters
-        en_att: bool=False      # Enable self attention or not
+        en_att: bool=False,     # Enable self attention or not
+        att_name: str=''        # Attention Name
     ):
         super(MMActionClassifier, self).__init__()
         self.dropout_p = 0.1
         self.en_att = en_att
+        self.att_name = att_name
         
         # Conv Encoder module
         self.audio_conv = Conv1dEncoder(
@@ -45,7 +47,7 @@ class MMActionClassifier(nn.Module):
             num_layers=1, 
             batch_first=True, 
             dropout=self.dropout_p, 
-            bidirectional=True
+            bidirectional=False
         )
 
         self.video_rnn = nn.GRU(
@@ -54,24 +56,38 @@ class MMActionClassifier(nn.Module):
             num_layers=1, 
             batch_first=True, 
             dropout=self.dropout_p, 
-            bidirectional=True
+            bidirectional=False
         )
 
         # Self attention module
-        self.audio_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
-        self.video_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
+        # self.audio_att = AdditiveAttention(d_hid=d_hid, d_att=256, n_head=4)
+        # self.video_att = AdditiveAttention(d_hid=d_hid, d_att=256, n_head=4)
+        # self.att = AdditiveAttention(d_hid=d_hid, d_att=256, n_head=4)
+        if self.att_name == "multihead":
+            self.att = torch.nn.MultiheadAttention(
+                embed_dim=d_hid, 
+                num_heads=4, 
+                dropout=self.dropout_p
+            )
+        elif self.att_name == "additive":
+            self.att = AdditiveAttention(
+                d_hid=d_hid, 
+                d_att=256
+            )
+        elif self.att_name == "hirarchical":
+            self.att = HirarchicalAttention(
+                d_hid=d_hid
+            )
         
         # Projection head
-        self.audio_proj = nn.Linear(d_hid*2, 128)
-        self.video_proj = nn.Linear(d_hid*2, 128)
         self.init_weight()
 
         # classifier head
         self.classifier = nn.Sequential(
-            nn.Linear(256, 128),
+            nn.Linear(d_hid, 64),
             nn.ReLU(),
             nn.Dropout(self.dropout_p),
-            nn.Linear(128, num_classes)
+            nn.Linear(64, num_classes)
         )
 
     def init_weight(self):
@@ -83,24 +99,28 @@ class MMActionClassifier(nn.Module):
                 torch.nn.init.xavier_uniform(m.weight)
                 m.bias.data.fill_(0.01)
 
-    def forward(self, x_audio, x_video):
+    def forward(self, x_audio, x_video, mask_a, mask_b):
         # 1. Conv forward
         x_audio = self.audio_conv(x_audio)
         # 2. Rnn forward
-        x_audio, _ = self.audio_rnn(x_audio)
-        x_video, _ = self.video_rnn(x_video)
+        x_audio, _ = self.audio_rnn(x_audio) # [T_axD]
+        x_video, _ = self.video_rnn(x_video) # [T_vxD]
         # 3. Attention
-        if self.en_att:
-            x_audio = self.audio_att(x_audio)
-            x_video = self.video_att(x_video)
+        if self.att_name == 'multihead':
+            mask_a = mask_a[:, :x_audio.shape[1]]
+            mask_b = mask_b[:, :x_video.shape[1]]
+            x_mm = torch.concat((x_audio, x_video), dim=1) # [(T_a+T_v) x D]
+            mask_mm = torch.concat((mask_a, mask_b), dim=1).permute(1, 0)
+            x_mm, _ = self.att(x_mm, x_mm, x_mm, key_padding_mask=mask_mm)
+        elif self.att_name == 'hirarchical':
+            mask_a = mask_a[:, :x_audio.shape[1]]
+            mask_b = mask_b[:, :x_video.shape[1]]
+            x_mm = torch.concat((x_audio, x_video), dim=1) # [(T_a+T_v) x D]
+            mask_mm = torch.concat((mask_a, mask_b), dim=1).permute(1, 0)
+            x_mm = self.att(x_mm)
         # 4. Average pooling
-        x_audio = torch.mean(x_audio, axis=1)
-        x_video = torch.mean(x_video, axis=1)
-        # 5. Projection
-        x_audio = self.audio_proj(x_audio)
-        x_video = self.video_proj(x_video)
-        # 6. MM embedding and predict
-        x_mm = torch.concat((x_audio, x_video), dim=1)
+        x_mm = torch.mean(x_mm, axis=1)
+        # 5. MM embedding and predict
         preds = self.classifier(x_mm)
         return preds
 
@@ -197,7 +217,7 @@ class HARClassifier(nn.Module):
         num_classes: int,       # Number of classes 
         acc_input_dim: int,     # Acc data input dim
         gyro_input_dim: int,    # Gyro data input dim
-        d_hid: int=64,          # Hidden Layer size
+        d_hid: int=128,         # Hidden Layer size
         n_filters: int=32,      # number of filters
         en_att: bool=False      # Enable self attention or not
     ):
@@ -225,7 +245,7 @@ class HARClassifier(nn.Module):
             num_layers=1, 
             batch_first=True, 
             dropout=self.dropout_p, 
-            bidirectional=True
+            bidirectional=False
         )
 
         self.gyro_rnn = nn.GRU(
@@ -234,7 +254,7 @@ class HARClassifier(nn.Module):
             num_layers=1, 
             batch_first=True, 
             dropout=self.dropout_p, 
-            bidirectional=True
+            bidirectional=False
         )
 
         # Self attention module
@@ -419,29 +439,78 @@ class Conv1dEncoder(nn.Module):
         x = x.permute(0, 2, 1)
         return x
 
-class SelfAttention(nn.Module):
+class AdditiveAttention(nn.Module):
     def __init__(
         self, 
         d_hid:  int=64, 
-        d_att:  int=512, 
-        n_head: int=8
+        d_att:  int=256
     ):
         super().__init__()
-        self.att_linear1 = nn.Linear(d_hid*2, d_att)
-        self.att_pool = nn.Tanh()
-        self.att_linear2 = nn.Linear(d_att, n_head)
-        
-        self.att_mat1 = torch.nn.Parameter(torch.rand(d_att, d_hid*2), requires_grad=True)
-        self.att_mat2 = torch.nn.Parameter(torch.rand(n_head, d_att), requires_grad=True)
+
+        self.query_proj = nn.Linear(d_hid, d_att, bias=False)
+        self.key_proj = nn.Linear(d_hid, d_att, bias=False)
+        self.bias = nn.Parameter(torch.rand(d_att).uniform_(-0.1, 0.1))
+        self.score_proj = nn.Linear(d_hid, 1)
 
     def forward(
-        self,
-        x: Tensor
+        self, 
+        query: Tensor, 
+        key: Tensor, 
+        value: Tensor,
+        mask: Tensor
     ):
-        att = self.att_linear1(x)
-        att = self.att_pool(att)
-        att = self.att_linear2(att)
-        att = att.transpose(1, 2)
-        att = torch.softmax(att, dim=2)
-        x = torch.matmul(att, x)
-        return x
+
+        score = self.score_proj(torch.tanh(self.key_proj(key) + self.query_proj(query) + self.bias)).squeeze(-1)
+        attn = F.softmax(score, dim=-1)
+        context = torch.bmm(attn.unsqueeze(1), value)
+        return context, attn
+
+
+class ScaledDotProductAttention(nn.Module):
+    """
+    Scaled Dot-Product Attention proposed in "Attention Is All You Need"
+    Compute the dot products of the query with all keys, divide each by sqrt(dim),
+    and apply a softmax function to obtain the weights on the values
+    Args: dim, mask
+        dim (int): dimention of attention
+        mask (torch.Tensor): tensor containing indices to be masked
+    Inputs: query, key, value, mask
+        - **query** (batch, q_len, d_model): tensor containing projection vector for decoder.
+        - **key** (batch, k_len, d_model): tensor containing projection vector for encoder.
+        - **value** (batch, v_len, d_model): tensor containing features of the encoded input sequence.
+        - **mask** (-): tensor containing indices to be masked
+    Returns: context, attn
+        - **context**: tensor containing the context vector from attention mechanism.
+        - **attn**: tensor containing the attention (alignment) from the encoder outputs.
+    """
+    def __init__(self, dim: int):
+        super(ScaledDotProductAttention, self).__init__()
+        self.sqrt_dim = np.sqrt(dim)
+
+    def forward(self, query: Tensor, key: Tensor, value: Tensor, mask: Optional[Tensor] = None):
+        score = torch.bmm(query, key.transpose(1, 2)) / self.sqrt_dim
+
+        if mask is not None:
+            pdb.set_trace()
+            score.masked_fill_(mask.view(score.size()), -float('Inf'))
+
+        attn = F.softmax(score, -1)
+        context = torch.bmm(attn, value)
+        return context, attn
+
+
+class HirarchicalAttention(nn.Module):
+    '''
+    ref: Hierarchical Attention Networks for Document Classiﬁcation
+    '''
+
+    def __init__(self, d_hid: int):
+        super(HirarchicalAttention, self).__init__()
+        self.w_linear = nn.Linear(d_hid, d_hid)
+        self.u_w = nn.Linear(d_hid, 1, bias=False)
+
+    def forward(self, input: torch.Tensor):
+        u_it = torch.tanh(self.w_linear(input))
+        a_it = torch.softmax(self.u_w(u_it), dim=1)
+        s_i = input * a_it
+        return s_i

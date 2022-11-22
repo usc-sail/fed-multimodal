@@ -4,14 +4,12 @@ import torch
 import pickle
 import random
 import pdb, os
-import torchaudio
 import numpy as np
 import os.path as osp
 
 from PIL import Image
 from tqdm import tqdm
 from pathlib import Path
-from torchvision import models, transforms
 
 
 class simulation_manager():
@@ -33,7 +31,7 @@ class simulation_manager():
                 f'fold{fold_idx}', 
                 f'partition_alpha{alpha_str}.{ext}'
             )
-        elif self.args.dataset in ["mit10", "mit51"]:
+        elif self.args.dataset in ["mit10", "mit51", "uci-har"]:
             alpha_str = str(alpha).replace('.', '')
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 

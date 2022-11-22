@@ -84,6 +84,14 @@ def parse_args():
         action='store_true',
         help="enable self-attention"
     )
+
+
+    parser.add_argument(
+        '--att_name',
+        type=str, 
+        default='multihead',
+        help='attention name'
+    )
     
     parser.add_argument(
         '--sample_rate', 
@@ -216,7 +224,7 @@ if __name__ == '__main__':
     device = torch.device("cuda:1") if torch.cuda.is_available() else "cpu"
     if torch.cuda.is_available(): print('GPU available, use GPU')
 
-    save_result_df = pd.DataFrame()
+    save_result_dict = dict()
 
     # We perform 3 fold experiments
     for fold_idx in range(1, 4):
@@ -264,7 +272,8 @@ if __name__ == '__main__':
             audio_input_dim=constants.feature_len_dict["mfcc"], 
             video_input_dim=constants.feature_len_dict["mobilenet_v2"],
             d_hid=64,
-            en_att=args.att
+            en_att=args.att,
+            att_name=args.att_name
         )
         global_model = global_model.to(device)
 
@@ -339,12 +348,28 @@ if __name__ == '__main__':
             logging.info('---------------------------------------------------------')
 
         # Performance save code
-        row_df = server.summarize_results()
-        save_result_df = pd.concat([save_result_df, row_df])
+        save_result_dict[f'fold{fold_idx}'] = server.summarize_dict_results()
         
+        # output to results
+        jsonString = json.dumps(save_result_dict, indent=4)
+        jsonFile = open(str(save_json_path.joinpath('result.json')), "w")
+        jsonFile.write(jsonString)
+        jsonFile.close()
+
     # Calculate the average of the 5-fold experiments
-    row_df = pd.DataFrame(index=['average'])
-    for metric in ['acc', 'top5_acc', 'uar']:
-        row_df[metric] = np.mean(save_result_df[metric])
-    save_result_df = pd.concat([save_result_df, row_df])
-    save_result_df.to_csv(str(Path(args.data_dir).joinpath('log', args.dataset, server.model_setting_str).joinpath('result.csv')))
+    save_result_dict['average'] = dict()
+    for metric in ['uar', 'acc', 'top5_acc']:
+        result_list = list()
+        for key in save_result_dict:
+            if metric not in save_result_dict[key]: continue
+            result_list.append(save_result_dict[key][metric])
+        save_result_dict['average'][metric] = np.nanmean(result_list)
+    
+    # dump the dictionary
+    jsonString = json.dumps(save_result_dict, indent=4)
+    jsonFile = open(str(save_json_path.joinpath('result.json')), "w")
+    jsonFile.write(jsonString)
+    jsonFile.close()
+
+
+
