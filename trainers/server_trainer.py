@@ -48,6 +48,7 @@ class Server(object):
         self.fold_idx = fold_idx
         self.log_path = Path(self.args.data_dir).joinpath(
             'log', 
+            self.args.fed_alg,
             self.args.dataset, 
             self.model_setting_str, 
             f'fold{fold_idx}', 
@@ -55,6 +56,7 @@ class Server(object):
         )
         self.result_path = Path(self.args.data_dir).joinpath(
             'log', 
+            self.args.fed_alg,
             self.args.dataset, 
             self.model_setting_str, 
             f'fold{fold_idx}'
@@ -161,16 +163,16 @@ class Server(object):
         for batch_idx, batch_data in enumerate(dataloader):
                 
             self.global_model.zero_grad()
-            x_a, x_b, mask_a, mask_b, y = batch_data
+            x_a, x_b, l_a, l_b, y = batch_data
             x_a, x_b, y = x_a.to(self.device), x_b.to(self.device), y.to(self.device)
-            mask_a, mask_b = mask_a.to(self.device), mask_b.to(self.device)
+            l_a, l_b = l_a.to(self.device), l_b.to(self.device)
             
             # forward
             outputs = self.global_model(
                 x_a.float(), 
                 x_b.float(), 
-                mask_a.float(), 
-                mask_b.float()
+                l_a, 
+                l_b
             )
             if not self.multilabel: 
                 outputs = torch.log_softmax(outputs, dim=1)

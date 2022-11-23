@@ -146,5 +146,5 @@ class partition_manager():
                 proportions = proportions / proportions.sum()
                 proportions = (np.cumsum(proportions)*len(idx_k)).astype(int)[:-1]
                 file_idx_clients = [idx_j + idx.tolist() for idx_j,idx in zip(file_idx_clients,np.split(idx_k, proportions))]
-            min_size = min([len(idx_j) for idx_j in file_idx_clients])
+                min_size = min([len(idx_j) for idx_j in file_idx_clients])
         return file_idx_clients

@@ -1,3 +1,4 @@
+import json
 import torch
 import random
 import numpy as np
@@ -89,7 +90,7 @@ def parse_args():
     parser.add_argument(
         '--att_name',
         type=str, 
-        default='multihead',
+        default='base',
         help='attention name'
     )
     
@@ -289,6 +290,15 @@ if __name__ == '__main__':
             num_of_clients, 
             sample_rate=args.sample_rate
         )
+
+        # save json path
+        save_json_path = Path(os.path.realpath(__file__)).parents[2].joinpath(
+            'result',
+            args.fed_alg,
+            args.dataset, 
+            server.model_setting_str
+        )
+        Path.mkdir(save_json_path, parents=True, exist_ok=True)
         
         # set seeds again
         set_seed(8)

@@ -59,31 +59,46 @@ class Client(object):
             weight_decay=1e-04
         )
         
+        # last global model
+        last_global_model = copy.deepcopy(self.model)
+        
         for iter in range(int(self.args.local_epochs)):
             for batch_idx, batch_data in enumerate(self.dataloader):
                 
                 self.model.zero_grad()
                 optimizer.zero_grad()
-                x_a, x_b, mask_a, mask_b, y = batch_data
+                x_a, x_b, l_a, l_b, y = batch_data
                 x_a, x_b, y = x_a.to(self.device), x_b.to(self.device), y.to(self.device)
-                mask_a, mask_b = mask_a.to(self.device), mask_b.to(self.device)
+                l_a, l_b = l_a.to(self.device), l_b.to(self.device)
                 
                 # forward
                 outputs = self.model(
                     x_a.float(), 
                     x_b.float(), 
-                    mask_a.float(), 
-                    mask_b.float()
+                    l_a, 
+                    l_b
                 )
 
                 if not self.multilabel: 
                     outputs = torch.log_softmax(outputs, dim=1)
-                
+                    
                 # backward
                 loss = self.criterion(outputs, y)
+
+                # compute proximal_term for fed prox
+                if self.args.fed_alg == 'fed_prox':
+                    proximal_term = 0.0
+                    for w, w_t in zip(self.model.parameters(), last_global_model.parameters()):
+                        proximal_term += (w - w_t).norm(2)
+                    loss = loss + 0.01 * proximal_term
+                
                 loss.backward()
                 
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
+                # clip gradients
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), 
+                    10.0
+                )
                 optimizer.step()
                 
                 # save results

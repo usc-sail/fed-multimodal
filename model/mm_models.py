@@ -58,21 +58,35 @@ class MMActionClassifier(nn.Module):
             dropout=self.dropout_p, 
             bidirectional=False
         )
-
-        # Self attention module
-        # self.audio_att = AdditiveAttention(d_hid=d_hid, d_att=256, n_head=4)
-        # self.video_att = AdditiveAttention(d_hid=d_hid, d_att=256, n_head=4)
-        # self.att = AdditiveAttention(d_hid=d_hid, d_att=256, n_head=4)
+        
+        # Attention modules
         if self.att_name == "multihead":
-            self.att = torch.nn.MultiheadAttention(
+            self.audio_att = torch.nn.MultiheadAttention(
+                embed_dim=d_hid, 
+                num_heads=4, 
+                dropout=self.dropout_p
+            )
+            
+            self.video_att = torch.nn.MultiheadAttention(
                 embed_dim=d_hid, 
                 num_heads=4, 
                 dropout=self.dropout_p
             )
         elif self.att_name == "additive":
-            self.att = AdditiveAttention(
+            self.audio_att = AdditiveAttention(
                 d_hid=d_hid, 
-                d_att=256
+                d_att=128
+            )
+            self.video_att = AdditiveAttention(
+                d_hid=d_hid, 
+                d_att=128
+            )
+        elif self.att_name == "base":
+            self.audio_att = BaseSelfAttention(
+                d_hid=d_hid
+            )
+            self.video_att = BaseSelfAttention(
+                d_hid=d_hid
             )
         elif self.att_name == "hirarchical":
             self.att = HirarchicalAttention(
@@ -80,14 +94,18 @@ class MMActionClassifier(nn.Module):
             )
         
         # Projection head
+        self.audio_proj = nn.Linear(d_hid, 64)
+        self.video_proj = nn.Linear(d_hid, 64)
+
+        # Projection head
         self.init_weight()
 
         # classifier head
         self.classifier = nn.Sequential(
-            nn.Linear(d_hid, 64),
+            nn.Linear(128, 128),
             nn.ReLU(),
             nn.Dropout(self.dropout_p),
-            nn.Linear(64, num_classes)
+            nn.Linear(128, num_classes)
         )
 
     def init_weight(self):
@@ -99,28 +117,39 @@ class MMActionClassifier(nn.Module):
                 torch.nn.init.xavier_uniform(m.weight)
                 m.bias.data.fill_(0.01)
 
-    def forward(self, x_audio, x_video, mask_a, mask_b):
+    def forward(self, x_audio, x_video, len_a, len_v):
         # 1. Conv forward
         x_audio = self.audio_conv(x_audio)
         # 2. Rnn forward
-        x_audio, _ = self.audio_rnn(x_audio) # [T_axD]
-        x_video, _ = self.video_rnn(x_video) # [T_vxD]
+        x_audio, _ = self.audio_rnn(x_audio) # [BxT_axD]
+        x_video, _ = self.video_rnn(x_video) # [BxT_vxD]
         # 3. Attention
-        if self.att_name == 'multihead':
-            mask_a = mask_a[:, :x_audio.shape[1]]
-            mask_b = mask_b[:, :x_video.shape[1]]
-            x_mm = torch.concat((x_audio, x_video), dim=1) # [(T_a+T_v) x D]
-            mask_mm = torch.concat((mask_a, mask_b), dim=1).permute(1, 0)
-            x_mm, _ = self.att(x_mm, x_mm, x_mm, key_padding_mask=mask_mm)
-        elif self.att_name == 'hirarchical':
-            mask_a = mask_a[:, :x_audio.shape[1]]
-            mask_b = mask_b[:, :x_video.shape[1]]
-            x_mm = torch.concat((x_audio, x_video), dim=1) # [(T_a+T_v) x D]
-            mask_mm = torch.concat((mask_a, mask_b), dim=1).permute(1, 0)
-            x_mm = self.att(x_mm)
-        # 4. Average pooling
-        x_mm = torch.mean(x_mm, axis=1)
-        # 5. MM embedding and predict
+        if self.en_att:
+            if self.att_name == 'multihead':
+                x_audio, _ = self.audio_att(x_audio, x_audio, x_audio)
+                x_video, _ = self.video_att(x_video, x_video, x_video)
+                # 4. Average pooling
+                x_audio = torch.mean(x_audio, axis=1)
+                x_video = torch.mean(x_video, axis=1)
+            elif self.att_name == 'additive':
+                # get attention output
+                x_audio = self.audio_att(x_audio, x_audio, x_audio, len_a)
+                x_video = self.video_att(x_video, x_video, x_video, len_v)
+            elif self.att_name == 'base':
+                # get attention output
+                x_audio = self.audio_att(x_audio)
+                x_video = self.video_att(x_video, len_v)
+        else:
+            # 4. Average pooling
+            x_audio = torch.mean(x_audio, axis=1)
+            x_video = torch.mean(x_video, axis=1)
+
+        # 5. Projection
+        x_audio = self.audio_proj(x_audio)
+        x_video = self.video_proj(x_video)
+           
+        # 6. MM embedding and predict
+        x_mm = torch.concat((x_audio, x_video), dim=1)
         preds = self.classifier(x_mm)
         return preds
 
@@ -164,9 +193,27 @@ class SERClassifier(nn.Module):
             dropout=self.dropout_p, 
             bidirectional=True
         )
+
         # Self attention module
-        self.audio_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
-        self.text_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
+        if self.att_name == "multihead":
+            self.audio_att = torch.nn.MultiheadAttention(
+                embed_dim=d_hid, 
+                num_heads=4, 
+                dropout=self.dropout_p
+            )
+            
+            self.video_att = torch.nn.MultiheadAttention(
+                embed_dim=d_hid, 
+                num_heads=4, 
+                dropout=self.dropout_p
+            )
+        elif self.att_name == "base":
+            self.audio_att = BaseSelfAttention(
+                d_hid=d_hid
+            )
+            self.video_att = BaseSelfAttention(
+                d_hid=d_hid
+            )
         
         # Projection head
         self.audio_proj = nn.Linear(d_hid*2, 128)
@@ -197,11 +244,20 @@ class SERClassifier(nn.Module):
         x_text, _ = self.text_rnn(x_text)
         # 3. Attention
         if self.en_att:
-            x_audio = self.audio_att(x_audio)
-            x_text = self.text_att(x_text)
-        # 4. Average pooling
-        x_audio = torch.mean(x_audio, axis=1)
-        x_text = torch.mean(x_text, axis=1)
+            if self.att_name == 'multihead':
+                x_audio, _ = self.audio_att(x_audio, x_audio, x_audio)
+                x_text, _ = self.video_att(x_text, x_text, x_text)
+                # 4. Average pooling
+                x_audio = torch.mean(x_audio, axis=1)
+                x_text = torch.mean(x_text, axis=1)
+            elif self.att_name == 'base':
+                # get attention output
+                x_audio = self.audio_att(x_audio)
+                x_text = self.video_att(x_text)
+        else:
+            # 4. Average pooling
+            x_audio = torch.mean(x_audio, axis=1)
+            x_text = torch.mean(x_text, axis=1)
         # 5. Projection
         x_audio = self.audio_proj(x_audio)
         x_text = self.text_proj(x_text)
@@ -438,6 +494,25 @@ class Conv1dEncoder(nn.Module):
         x = self.dropout(x)
         x = x.permute(0, 2, 1)
         return x
+    
+    
+def masked_softmax(X, valid_lens):
+    """Perform softmax operation by masking elements on the last axis."""
+    # `X`: 3D tensor, `valid_lens`: 1D or 2D tensor
+    if valid_lens is None:
+        return nn.functional.softmax(X, dim=-1)
+    else:
+        shape = X.shape
+        if valid_lens.dim() == 1:
+            valid_lens = torch.repeat_interleave(valid_lens, shape[1])
+        else:
+            valid_lens = valid_lens.reshape(-1)
+        # On the last axis, replace masked elements with a very large negative
+        # value, whose exponentiation outputs 0
+        X = d2l.sequence_mask(X.reshape(-1, shape[-1]), valid_lens,
+                              value=-1e6)
+        return nn.functional.softmax(X.reshape(shape), dim=-1)
+    
 
 class AdditiveAttention(nn.Module):
     def __init__(
@@ -450,21 +525,23 @@ class AdditiveAttention(nn.Module):
         self.query_proj = nn.Linear(d_hid, d_att, bias=False)
         self.key_proj = nn.Linear(d_hid, d_att, bias=False)
         self.bias = nn.Parameter(torch.rand(d_att).uniform_(-0.1, 0.1))
-        self.score_proj = nn.Linear(d_hid, 1)
+        self.score_proj = nn.Linear(d_att, 1)
+        self.dropout = nn.Dropout(0.1)
 
     def forward(
         self, 
-        query: Tensor, 
+        query: Tensor,
         key: Tensor, 
         value: Tensor,
-        mask: Tensor
+        valid_lens: Tensor
     ):
-
         score = self.score_proj(torch.tanh(self.key_proj(key) + self.query_proj(query) + self.bias)).squeeze(-1)
-        attn = F.softmax(score, dim=-1)
-        context = torch.bmm(attn.unsqueeze(1), value)
-        return context, attn
-
+        # attn = F.softmax(score, dim=-1)
+        attn = masked_softmax(scores, valid_lens)
+        attn = self.dropout(attn)
+        output = torch.bmm(attn.unsqueeze(1), value)
+        return output
+    
 
 class ScaledDotProductAttention(nn.Module):
     """
@@ -501,7 +578,7 @@ class ScaledDotProductAttention(nn.Module):
 
 class HirarchicalAttention(nn.Module):
     '''
-    ref: Hierarchical Attention Networks for Document Classiﬁcation
+    ref: Hierarchical Attention Networks
     '''
 
     def __init__(self, d_hid: int):
@@ -514,3 +591,46 @@ class HirarchicalAttention(nn.Module):
         a_it = torch.softmax(self.u_w(u_it), dim=1)
         s_i = input * a_it
         return s_i
+
+
+class HirarchicalAttention(nn.Module):
+    '''
+    ref: Hierarchical Attention Networks
+    '''
+
+    def __init__(self, d_hid: int):
+        super(HirarchicalAttention, self).__init__()
+        self.w_linear = nn.Linear(d_hid, d_hid)
+        self.u_w = nn.Linear(d_hid, 1, bias=False)
+
+    def forward(self, input: torch.Tensor):
+        u_it = torch.tanh(self.w_linear(input))
+        a_it = torch.softmax(self.u_w(u_it), dim=1)
+        s_i = input * a_it
+        return s_i
+    
+
+class BaseSelfAttention(nn.Module):
+    # https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8421023
+    def __init__(
+        self, 
+        d_hid:  int=64
+    ):
+        super().__init__()
+        self.att_fc1 = nn.Linear(d_hid, 1)
+        self.att_pool = nn.Tanh()
+        self.att_fc2 = nn.Linear(1, 1)
+
+    def forward(
+        self,
+        x: Tensor,
+        val_l=None
+    ):
+        att = self.att_pool(self.att_fc1(x))
+        att = self.att_fc2(att).squeeze(-1)
+        if val_l is not None:
+            for idx in range(len(val_l)):
+                att[idx, val_l[idx]:] = -1e6
+        att = torch.softmax(att, dim=1)
+        x = (att.unsqueeze(2) * x).sum(axis=1)
+        return x

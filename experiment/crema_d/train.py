@@ -87,6 +87,13 @@ def parse_args():
     )
     
     parser.add_argument(
+        '--att_name',
+        type=str, 
+        default='multihead',
+        help='attention name'
+    )
+
+    parser.add_argument(
         '--sample_rate', 
         default=0.1,
         type=float,
@@ -222,7 +229,7 @@ if __name__ == '__main__':
     dm.get_simulation_setting()
     
     # find device
-    device = torch.device("cuda:1") if torch.cuda.is_available() else "cpu"
+    device = torch.device("cuda:0") if torch.cuda.is_available() else "cpu"
     if torch.cuda.is_available(): print('GPU available, use GPU')
 
     save_result_dict = dict()
@@ -273,7 +280,8 @@ if __name__ == '__main__':
             audio_input_dim=constants.feature_len_dict["mfcc"], 
             video_input_dim=constants.feature_len_dict["mobilenet_v2"],
             d_hid=64,
-            en_att=args.att
+            en_att=args.att,
+            att_name=args.att_name
         )
         global_model = global_model.to(device)
 
@@ -291,7 +299,12 @@ if __name__ == '__main__':
         )
 
         # save json path
-        save_json_path = Path(os.path.realpath(__file__)).parents[2].joinpath('result', args.dataset, server.model_setting_str)
+        save_json_path = Path(os.path.realpath(__file__)).parents[2].joinpath(
+            'result',
+            args.fed_alg,
+            args.dataset, 
+            server.model_setting_str
+        )
         Path.mkdir(save_json_path, parents=True, exist_ok=True)
         
         # set seeds again
@@ -306,6 +319,7 @@ if __name__ == '__main__':
                 # Local training
                 client_id = client_ids[idx]
                 dataloader = dataloader_dict[client_id]
+                if dataloader is None: continue
                 # initialize client object
                 client = Client(
                     args, 
@@ -324,6 +338,7 @@ if __name__ == '__main__':
                 del client
             
             # 2. aggregate, load new global weights
+            if len(server.num_samples_list) == 0: continue
             server.average_weights()
 
             logging.info('---------------------------------------------------------')

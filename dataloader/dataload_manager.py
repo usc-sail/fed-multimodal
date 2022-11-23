@@ -23,26 +23,23 @@ def collate_mm_fn_padd(batch):
     if batch[0][1] is not None: max_b_len = max(map(lambda x: x[1].shape[0], batch))
 
     # pad according to max_len
-    x_a, x_b, mask_a, mask_b, ys = list(), list(), list(), list(), list()
+    x_a, x_b, len_a, len_b, ys = list(), list(), list(), list(), list()
     for idx in range(len(batch)):
         x_a.append(pad_tensor(batch[idx][0], pad=max_a_len))
         x_b.append(pad_tensor(batch[idx][1], pad=max_b_len))
         
-        if batch[idx][2]: mask_a.append(torch.tensor(np.ones(max_a_len)))
-        else: mask_a.append(torch.tensor(np.zeros(max_a_len)))
+        len_a.append(torch.tensor(batch[idx][2]))
+        len_b.append(torch.tensor(batch[idx][3]))
 
-        if batch[idx][3]: mask_b.append(torch.tensor(np.ones(max_b_len)))
-        else: mask_b.append(torch.tensor(np.zeros(max_b_len)))
-        
         ys.append(batch[idx][-1])
     
     # stack all
     x_a = torch.stack(x_a, dim=0)
     x_b = torch.stack(x_b, dim=0)
-    mask_a = torch.stack(mask_a, dim=0)
-    mask_b = torch.stack(mask_b, dim=0)
+    len_a = torch.stack(len_a, dim=0)
+    len_b = torch.stack(len_b, dim=0)
     ys = torch.stack(ys, dim=0)
-    return x_a, x_b, mask_a, mask_b, ys
+    return x_a, x_b, len_a, len_b, ys
 
 
 class MMDatasetGenerator(Dataset):
@@ -79,20 +76,20 @@ class MMDatasetGenerator(Dataset):
         # modality A, if missing replace with 0s, and mask
         if data_a is not None: 
             data_a = torch.tensor(data_a)
-            en_mask_a = False
+            len_a = len(data_a)
         else: 
             data_a = torch.tensor(np.zeros(self.default_feat_shape_a))
-            en_mask_a = True
+            len_a = 0
 
         # modality B, if missing replace with 0s
         if data_b is not None: 
             data_b = torch.tensor(data_b)
-            en_mask_b = False
+            len_b = len(data_b)
         else: 
             data_b = torch.tensor(np.zeros(self.default_feat_shape_b))
-            en_mask_b = True
+            len_b = 0
 
-        return data_a, data_b, en_mask_a, en_mask_b, label
+        return data_a, data_b, len_a, len_b, label
 
 
 class DataloadManager():
