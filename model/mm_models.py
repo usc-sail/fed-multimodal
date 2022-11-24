@@ -275,11 +275,13 @@ class HARClassifier(nn.Module):
         gyro_input_dim: int,    # Gyro data input dim
         d_hid: int=128,         # Hidden Layer size
         n_filters: int=32,      # number of filters
-        en_att: bool=False      # Enable self attention or not
+        en_att: bool=False,     # Enable self attention or not
+        att_name: str=''        # Attention Name
     ):
         super(HARClassifier, self).__init__()
         self.dropout_p = 0.1
         self.en_att = en_att
+        self.att_name = att_name
         
         # Conv Encoder module
         self.acc_conv = Conv1dEncoder(
@@ -314,19 +316,32 @@ class HARClassifier(nn.Module):
         )
 
         # Self attention module
-        self.acc_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
-        self.gyro_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
+        if self.att_name == "multihead":
+            self.acc_att = torch.nn.MultiheadAttention(
+                embed_dim=d_hid, 
+                num_heads=4, 
+                dropout=self.dropout_p
+            )
+            
+            self.gyro_att = torch.nn.MultiheadAttention(
+                embed_dim=d_hid, 
+                num_heads=4, 
+                dropout=self.dropout_p
+            )
+        elif self.att_name == "base":
+            self.acc_att = BaseSelfAttention(d_hid=d_hid)
+            self.gyro_att = BaseSelfAttention(d_hid=d_hid)
         self.init_weight()
 
         # Projection head
-        self.acc_proj = nn.Linear(d_hid*2, 64)
-        self.gyro_proj = nn.Linear(d_hid*2, 64)
+        self.acc_proj = nn.Linear(d_hid, 64)
+        self.gyro_proj = nn.Linear(d_hid, 64)
         
         # Classifier head
         self.classifier = nn.Sequential(
-            nn.Linear(128, 64),
+            nn.Linear(128, 128),
             nn.ReLU(),
-            nn.Linear(64, num_classes)
+            nn.Linear(128, num_classes)
         )
 
     def init_weight(self):
@@ -338,20 +353,31 @@ class HARClassifier(nn.Module):
                 torch.nn.init.xavier_uniform(m.weight)
                 m.bias.data.fill_(0.01)
 
-    def forward(self, x_acc, x_gyro):
+    def forward(self, x_acc, x_gyro, l_a, l_b):
         # 1. Conv forward
         x_acc = self.acc_conv(x_acc)
         x_gyro = self.gyro_conv(x_gyro)
         # 2. Rnn forward
         x_acc, _ = self.acc_rnn(x_acc)
         x_gyro, _ = self.gyro_rnn(x_gyro)
+
         # 3. Attention
         if self.en_att:
-            x_acc = self.acc_att(x_acc)
-            x_gyro = self.gyro_att(x_gyro)
-        # 4. Average pooling
-        x_acc = torch.mean(x_acc, axis=1)
-        x_gyro = torch.mean(x_gyro, axis=1)
+            if self.att_name == 'multihead':
+                x_acc, _ = self.acc_att(x_acc, x_acc, x_acc)
+                x_gyro, _ = self.gyro_att(x_gyro, x_gyro, x_gyro)
+                # 4. Average pooling
+                x_acc = torch.mean(x_acc, axis=1)
+                x_gyro = torch.mean(x_gyro, axis=1)
+            elif self.att_name == 'base':
+                # get attention output
+                x_acc = self.acc_att(x_acc)
+                x_gyro = self.gyro_att(x_gyro)
+        else:
+            # 4. Average pooling
+            x_acc = torch.mean(x_acc, axis=1)
+            x_gyro = torch.mean(x_gyro, axis=1)
+
         # 5. Projection
         x_acc = self.acc_proj(x_acc)
         x_gyro = self.gyro_proj(x_gyro)

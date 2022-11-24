@@ -10,6 +10,7 @@ import os.path as osp
 
 from tqdm import tqdm
 from pathlib import Path
+from collections import Counter
 from torch.utils.data import DataLoader, Dataset
 
 def pad_tensor(vec, pad):
@@ -93,8 +94,12 @@ class MMDatasetGenerator(Dataset):
 
 
 class DataloadManager():
-    def __init__(self, args: dict):
+    def __init__(
+        self, 
+        args: dict
+    ):
         self.args = args
+        self.label_dist_dict = dict()
         # Initialize video feature paths
         if self.args.dataset in ['ucf101', 'mit10', 'mit51', 'mit101', 'crema_d']:
             self.get_video_feat_path()
@@ -419,6 +424,21 @@ class DataloadManager():
         if self.sim_data:
             return self.sim_data[client_id]
         return None
+
+    def get_label_dist(
+        self, 
+        data_dict,
+        client_id: str
+    ):
+        """
+        Set dataloader for training/dev/test.
+        :param data_dict: data dictionary
+        :return: data_dis_dict
+        """
+        label_list = list()
+        for idx in range(len(data_dict)):
+            label_list.append(data_dict[idx][-2])
+        self.label_dist_dict[client_id] = Counter(label_list)
         
     def set_dataloader(
             self, 

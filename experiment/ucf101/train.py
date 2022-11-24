@@ -249,6 +249,10 @@ if __name__ == '__main__':
                 client_id=client_id, 
                 fold_idx=fold_idx
             )
+            dm.get_label_dist(
+                video_dict, 
+                client_id
+            )
             shuffle = False if client_id in ['dev', 'test'] else True
             client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=int(client_id))
             dataloader_dict[client_id] = dm.set_dataloader(
@@ -295,10 +299,15 @@ if __name__ == '__main__':
         save_json_path = Path(os.path.realpath(__file__)).parents[2].joinpath(
             'result',
             args.fed_alg,
-            args.dataset, 
+            args.dataset,
             server.model_setting_str
         )
         Path.mkdir(save_json_path, parents=True, exist_ok=True)
+
+        server.save_json_file(
+            dm.label_dist_dict, 
+            save_json_path.joinpath('label.json')
+        )
         
         # set seeds again
         set_seed(8)
@@ -361,10 +370,10 @@ if __name__ == '__main__':
         save_result_dict[f'fold{fold_idx}'] = server.summarize_dict_results()
         
         # output to results
-        jsonString = json.dumps(save_result_dict, indent=4)
-        jsonFile = open(str(save_json_path.joinpath('result.json')), "w")
-        jsonFile.write(jsonString)
-        jsonFile.close()
+        server.save_json_file(
+            save_result_dict, 
+            save_json_path.joinpath('result.json')
+        )
 
     # Calculate the average of the 5-fold experiments
     save_result_dict['average'] = dict()
@@ -376,10 +385,10 @@ if __name__ == '__main__':
         save_result_dict['average'][metric] = np.nanmean(result_list)
     
     # dump the dictionary
-    jsonString = json.dumps(save_result_dict, indent=4)
-    jsonFile = open(str(save_json_path.joinpath('result.json')), "w")
-    jsonFile.write(jsonString)
-    jsonFile.close()
+    server.save_json_file(
+        save_result_dict, 
+        save_json_path.joinpath('result.json')
+    )
 
 
 

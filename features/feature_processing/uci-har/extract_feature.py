@@ -7,8 +7,6 @@ import random
 import pickle
 import os, sys
 import argparse
-import opensmile
-import torchaudio
 import numpy as np
 import os.path as osp
 

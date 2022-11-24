@@ -128,13 +128,21 @@ def parse_args():
         '--att', 
         type=bool, 
         default=False,
-        help='self attention applied or not')
+        help='self attention applied or not'
+    )
     
     parser.add_argument(
         "--en_att",
         dest='att',
         action='store_true',
         help="enable self-attention"
+    )
+    
+    parser.add_argument(
+        '--att_name',
+        type=str, 
+        default='multihead',
+        help='attention name'
     )
     
     parser.add_argument(
@@ -236,6 +244,10 @@ if __name__ == '__main__':
         gyro_dict = dm.load_gyro_feat(
             client_id=client_id
         )
+        dm.get_label_dist(
+            gyro_dict, 
+            client_id
+        )
         shuffle = False if client_id in ['dev', 'test'] else True
         client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=client_id)
         dataloader_dict[client_id] = dm.set_dataloader(
@@ -262,7 +274,9 @@ if __name__ == '__main__':
             num_classes=constants.num_class_dict[args.dataset],         # Number of classes 
             acc_input_dim=constants.feature_len_dict[args.acc_feat],    # Acc data input dim
             gyro_input_dim=constants.feature_len_dict[args.gyro_feat],  # Gyro data input dim
-            en_att=args.att                                             # Enable self attention or not
+            en_att=args.att,                                            # Enable self attention or not
+            d_hid=64,
+            att_name=args.att_name
         )
         global_model = global_model.to(device)
 
@@ -282,10 +296,16 @@ if __name__ == '__main__':
         # save json path
         save_json_path = Path(os.path.realpath(__file__)).parents[2].joinpath(
             'result', 
+            args.fed_alg,
             args.dataset, 
             server.model_setting_str
         )
         Path.mkdir(save_json_path, parents=True, exist_ok=True)
+
+        server.save_json_file(
+            dm.label_dist_dict, 
+            save_json_path.joinpath('label.json')
+        )
         
         # set seeds again
         set_seed(8*fold_idx)
@@ -307,6 +327,7 @@ if __name__ == '__main__':
                     dataloader, 
                     copy.deepcopy(server.global_model)
                 )
+                # server.global_model.state_dict()['classifier.2.bias']
                 client.update_weights()
                 # server append updates
                 server.save_train_updates(

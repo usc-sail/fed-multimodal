@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import collections
 import pandas as pd
@@ -92,6 +93,7 @@ class Server(object):
         model_setting_str += '_lr' + str(self.args.learning_rate).replace('.', '')
         model_setting_str += '_bs'+str(self.args.batch_size)
         model_setting_str += '_sr'+str(self.args.sample_rate).replace('.', '')
+        model_setting_str += '_ep'+str(self.args.num_epochs)
         if self.args.att: model_setting_str += f'_{self.args.att_name}'
         
         # FL simulations: missing modality, label noise, missing labels
@@ -350,4 +352,24 @@ class Server(object):
             for i in range(1, len(self.model_updates)):
                 w_avg[key] += torch.div(self.model_updates[i][key]*self.num_samples_list[i], total_num_samples)
         self.global_model.load_state_dict(copy.deepcopy(w_avg))
+
+    def set_save_json_file(
+        self, 
+        file_path
+    ):
+        self.save_json_path = file_path
+
+
+    def save_json_file(
+        self, 
+        data_dict, 
+        data_path
+    ):
+        jsonString = json.dumps(
+            data_dict, 
+            indent=4
+        )
+        jsonFile = open(str(data_path), "w")
+        jsonFile.write(jsonString)
+        jsonFile.close()
 

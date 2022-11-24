@@ -234,7 +234,7 @@ if __name__ == '__main__':
 
     save_result_dict = dict()
 
-    # We perform 3 fold experiments
+    # We perform 5 fold experiments
     for fold_idx in range(1, 6):
         # load simulation feature
         dm.load_sim_dict(
@@ -244,6 +244,7 @@ if __name__ == '__main__':
         dm.get_client_ids(
             fold_idx=fold_idx
         )
+
         # set dataloaders
         dataloader_dict = dict()
         logging.info('Loading Data')
@@ -255,6 +256,10 @@ if __name__ == '__main__':
             video_dict = dm.load_video_feat(
                 client_id=client_id, 
                 fold_idx=fold_idx
+            )
+            dm.get_label_dist(
+                audio_dict, 
+                client_id
             )
             shuffle = False if client_id in ['dev', 'test'] else True
             client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=client_id)
@@ -307,6 +312,11 @@ if __name__ == '__main__':
         )
         Path.mkdir(save_json_path, parents=True, exist_ok=True)
         
+        server.save_json_file(
+            dm.label_dist_dict, 
+            save_json_path.joinpath('label.json')
+        )
+
         # set seeds again
         set_seed(8)
 
@@ -370,10 +380,10 @@ if __name__ == '__main__':
         save_result_dict[f'fold{fold_idx}'] = server.summarize_dict_results()
         
         # output to results
-        jsonString = json.dumps(save_result_dict, indent=4)
-        jsonFile = open(str(save_json_path.joinpath('result.json')), "w")
-        jsonFile.write(jsonString)
-        jsonFile.close()
+        server.save_json_file(
+            save_result_dict, 
+            save_json_path.joinpath('result.json')
+        )
 
     # Calculate the average of the 5-fold experiments
     save_result_dict['average'] = dict()
@@ -385,7 +395,8 @@ if __name__ == '__main__':
         save_result_dict['average'][metric] = np.nanmean(result_list)
     
     # dump the dictionary
-    jsonString = json.dumps(save_result_dict, indent=4)
-    jsonFile = open(str(save_json_path.joinpath('result.json')), "w")
-    jsonFile.write(jsonString)
-    jsonFile.close()
+    server.save_json_file(
+        save_result_dict, 
+        save_json_path.joinpath('result.json')
+    )
+
