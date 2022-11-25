@@ -151,7 +151,7 @@ class MMActionClassifier(nn.Module):
         # 6. MM embedding and predict
         x_mm = torch.concat((x_audio, x_video), dim=1)
         preds = self.classifier(x_mm)
-        return preds
+        return preds, x_mm
 
 
 class SERClassifier(nn.Module):
@@ -162,11 +162,13 @@ class SERClassifier(nn.Module):
         text_input_dim: int,    # Text data input dim
         d_hid: int=64,          # Hidden Layer size
         n_filters: int=32,      # number of filters
-        en_att: bool=False      # Enable self attention or not
+        en_att: bool=False,     # Enable self attention or not
+        att_name: str=''        # Attention Name
     ):
         super(SERClassifier, self).__init__()
         self.dropout_p = 0.1
         self.en_att = en_att
+        self.att_name = att_name
         
         # Conv Encoder module
         self.audio_conv = Conv1dEncoder(
@@ -182,7 +184,7 @@ class SERClassifier(nn.Module):
             num_layers=1, 
             batch_first=True, 
             dropout=self.dropout_p, 
-            bidirectional=True
+            bidirectional=False
         )
 
         self.text_rnn = nn.GRU(
@@ -191,7 +193,7 @@ class SERClassifier(nn.Module):
             num_layers=1, 
             batch_first=True, 
             dropout=self.dropout_p, 
-            bidirectional=True
+            bidirectional=False
         )
 
         # Self attention module
@@ -201,8 +203,7 @@ class SERClassifier(nn.Module):
                 num_heads=4, 
                 dropout=self.dropout_p
             )
-            
-            self.video_att = torch.nn.MultiheadAttention(
+            self.text_att = torch.nn.MultiheadAttention(
                 embed_dim=d_hid, 
                 num_heads=4, 
                 dropout=self.dropout_p
@@ -211,18 +212,18 @@ class SERClassifier(nn.Module):
             self.audio_att = BaseSelfAttention(
                 d_hid=d_hid
             )
-            self.video_att = BaseSelfAttention(
+            self.text_att = BaseSelfAttention(
                 d_hid=d_hid
             )
         
         # Projection head
-        self.audio_proj = nn.Linear(d_hid*2, 128)
-        self.text_proj = nn.Linear(d_hid*2, 128)
+        self.audio_proj = nn.Linear(d_hid, 64)
+        self.text_proj = nn.Linear(d_hid, 64)
         self.init_weight()
 
         # classifier head
         self.classifier = nn.Sequential(
-            nn.Linear(256, 128),
+            nn.Linear(128, 128),
             nn.ReLU(),
             nn.Linear(128, num_classes)
         )
@@ -236,7 +237,7 @@ class SERClassifier(nn.Module):
                 torch.nn.init.xavier_uniform(m.weight)
                 m.bias.data.fill_(0.01)
 
-    def forward(self, x_audio, x_text):
+    def forward(self, x_audio, x_text, l_a, l_b):
         # 1. Conv forward
         x_audio = self.audio_conv(x_audio)
         # 2. Rnn forward
@@ -246,14 +247,14 @@ class SERClassifier(nn.Module):
         if self.en_att:
             if self.att_name == 'multihead':
                 x_audio, _ = self.audio_att(x_audio, x_audio, x_audio)
-                x_text, _ = self.video_att(x_text, x_text, x_text)
+                x_text, _ = self.text_att(x_text, x_text, x_text)
                 # 4. Average pooling
                 x_audio = torch.mean(x_audio, axis=1)
                 x_text = torch.mean(x_text, axis=1)
             elif self.att_name == 'base':
                 # get attention output
                 x_audio = self.audio_att(x_audio)
-                x_text = self.video_att(x_text)
+                x_text = self.text_att(x_text, l_b)
         else:
             # 4. Average pooling
             x_audio = torch.mean(x_audio, axis=1)
@@ -264,7 +265,7 @@ class SERClassifier(nn.Module):
         # 6. MM embedding and predict
         x_mm = torch.concat((x_audio, x_text), dim=1)
         preds = self.classifier(x_mm)
-        return preds
+        return preds, x_mm
 
 
 class HARClassifier(nn.Module):
@@ -384,7 +385,7 @@ class HARClassifier(nn.Module):
         # 6. MM embedding and predict
         x_mm = torch.concat((x_acc, x_gyro), dim=1)
         preds = self.classifier(x_mm)
-        return preds
+        return preds, x_mm
 
 
 class ECGClassifier(nn.Module):
@@ -478,7 +479,7 @@ class ECGClassifier(nn.Module):
         # 6. MM embedding and predict
         x_mm = torch.concat((x_i_to_avf, x_v1_to_v6), dim=1)
         preds = self.classifier(x_mm)
-        return preds
+        return preds, x_mm
 
 
 class Conv1dEncoder(nn.Module):
