@@ -31,7 +31,8 @@ class Server(object):
         args, 
         model, 
         device,
-        criterion
+        criterion,
+        client_ids
     ):
         self.args = args
         self.global_model = model
@@ -39,7 +40,22 @@ class Server(object):
         self.result_dict = dict()
         self.criterion = criterion
         self.model_setting_str = self.get_model_setting()
+        self.client_ids = client_ids
         self.multilabel = True if args.dataset == 'ptb-xl' else False
+
+        if self.args.fed_alg == 'scaffold':
+            self.server_control = self.init_control(model)
+            self.set_control_device(self.server_control, True)
+            self.client_controls = {
+                client_id: self.init_control(model) for client_id in self.client_ids
+            }
+
+    def set_client_control(
+        self,
+        client_id,
+        client_control
+    ):
+        self.client_controls[client_id] = client_control
         
     def initialize_log(
         self, 
@@ -122,6 +138,7 @@ class Server(object):
         self.epoch = epoch
         self.model_updates = list()
         self.num_samples_list = list()
+        self.delta_controls = list()
         self.result_dict[self.epoch] = dict()
         self.result_dict[self.epoch]['train'] = list()
         self.result_dict[self.epoch]['dev'] = list()
@@ -170,7 +187,7 @@ class Server(object):
             l_a, l_b = l_a.to(self.device), l_b.to(self.device)
             
             # forward
-            outputs = self.global_model(
+            outputs, _ = self.global_model(
                 x_a.float(), 
                 x_b.float(), 
                 l_a, 
@@ -266,11 +283,13 @@ class Server(object):
         self, 
         model_updates: dict, 
         num_sample: int, 
-        result: dict
+        result: dict,
+        delta_control=None
     ):
         self.model_updates.append(model_updates)
         self.num_samples_list.append(num_sample)
         self.result_dict[self.epoch]['train'].append(result)
+        self.delta_controls.append(delta_control)
 
     def log_epoch_result(
         self, 
@@ -286,7 +305,10 @@ class Server(object):
             self.best_epoch = self.epoch
             self.best_dev_dict = self.result_dict[self.epoch]['dev']
             self.best_test_dict = self.result_dict[self.epoch]['test']
-            torch.save(deepcopy(self.global_model.state_dict()), str(self.result_path.joinpath('model.pt')))
+            torch.save(
+                deepcopy(self.global_model.state_dict()), 
+                str(self.result_path.joinpath('model.pt'))
+            )
         
         # log dev results
         best_dev_acc = self.best_dev_dict['acc']
@@ -353,6 +375,25 @@ class Server(object):
                 w_avg[key] += torch.div(self.model_updates[i][key]*self.num_samples_list[i], total_num_samples)
         self.global_model.load_state_dict(copy.deepcopy(w_avg))
 
+        # update global control if algorithm is scaffold
+        if self.args.fed_alg == 'scaffold':
+            self.update_server_control()
+
+    def update_server_control(self):
+        # update server control
+        total_num_samples = np.sum(self.num_samples_list)
+        delta_avg = copy.deepcopy(self.delta_controls[0])
+        new_control = copy.deepcopy(self.server_control)
+
+        for key in delta_avg.keys():
+            delta_avg[key] = self.delta_controls[0][key]*(self.num_samples_list[0]/total_num_samples)
+
+        for key in delta_avg.keys():
+            for idx in range(1, len(self.delta_controls)):
+                delta_avg[key] += torch.div(self.delta_controls[idx][key]*self.num_samples_list[idx], total_num_samples)
+            new_control[key] = new_control[key] - delta_avg[key]
+        self.server_control = copy.deepcopy(new_control)
+
     def set_save_json_file(
         self, 
         file_path
@@ -373,3 +414,24 @@ class Server(object):
         jsonFile.write(jsonString)
         jsonFile.close()
 
+    # scaffold init contral
+    def init_control(self, model):
+        """ a dict type: {name: params}
+        """
+        control = {
+            name: torch.zeros_like(
+                p.data
+            ).cpu() for name, p in model.state_dict().items()
+        }
+        return control
+
+    def set_control_device(
+        self, 
+        control, 
+        device=True
+    ):
+        for name in control.keys():
+            if device == True:
+                control[name] = control[name].to(self.device)
+            else:
+                control[name] = control[name].cpu()
