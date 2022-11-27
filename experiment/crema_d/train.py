@@ -19,10 +19,14 @@ sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), '
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'constants'))
 
 import constants
-from client_trainer import Client
 from server_trainer import Server
 from mm_models import MMActionClassifier
 from dataload_manager import DataloadManager
+
+# trainer
+from fed_rs_trainer import ClientFedRS
+from fed_avg_trainer import ClientFedAvg
+from scaffold_trainer import ClientScaffold
 
 # define logging console
 import logging
@@ -234,6 +238,13 @@ if __name__ == '__main__':
 
     save_result_dict = dict()
 
+    if args.fed_alg in ['fed_avg', 'fed_prox']:
+        Client = ClientFedAvg
+    elif args.fed_alg in ['scaffold']:
+        Client = ClientScaffold
+    elif args.fed_alg in ['fed_rs']:
+        Client = ClientFedRS
+
     # We perform 5 fold experiments
     for fold_idx in range(1, 6):
         # load simulation feature
@@ -295,7 +306,8 @@ if __name__ == '__main__':
             args, 
             global_model, 
             device=device, 
-            criterion=criterion
+            criterion=criterion,
+            client_ids=client_ids
         )
         server.initialize_log(fold_idx)
         server.sample_clients(
@@ -336,15 +348,34 @@ if __name__ == '__main__':
                     device, 
                     criterion, 
                     dataloader, 
-                    copy.deepcopy(server.global_model)
+                    model=copy.deepcopy(server.global_model),
+                    label_dict=dm.label_dist_dict[client_id],
+                    num_class=constants.num_class_dict[args.dataset]
                 )
-                client.update_weights()
-                # server append updates
-                server.save_train_updates(
-                    copy.deepcopy(client.get_parameters()), 
-                    client.result['sample'], 
-                    client.result
-                )
+
+                if args.fed_alg == 'scaffold':
+                    client.set_control(
+                        server_control=copy.deepcopy(server.server_control), 
+                        client_control=copy.deepcopy(server.client_controls[client_id])
+                    )
+                    client.update_weights()
+
+                    # server append updates
+                    server.set_client_control(client_id, copy.deepcopy(client.client_control))
+                    server.save_train_updates(
+                        copy.deepcopy(client.get_parameters()), 
+                        client.result['sample'], 
+                        client.result,
+                        delta_control=copy.deepcopy(client.delta_control)
+                    )
+                else:
+                    client.update_weights()
+                    # server append updates
+                    server.save_train_updates(
+                        copy.deepcopy(client.get_parameters()), 
+                        client.result['sample'], 
+                        client.result
+                    )
                 del client
             
             # 2. aggregate, load new global weights

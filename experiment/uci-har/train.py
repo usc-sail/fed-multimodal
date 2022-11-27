@@ -18,10 +18,14 @@ sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), '
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'constants'))
 
 import constants
-from client_trainer import Client
 from server_trainer import Server
 from mm_models import HARClassifier
 from dataload_manager import DataloadManager
+
+# trainer
+from fed_rs_trainer import ClientFedRS
+from fed_avg_trainer import ClientFedAvg
+from scaffold_trainer import ClientScaffold
 
 # Define logging console
 import logging
@@ -230,6 +234,13 @@ if __name__ == '__main__':
     if torch.cuda.is_available(): print('GPU available, use GPU')
     save_result_dict = dict()
 
+    if args.fed_alg in ['fed_avg', 'fed_prox']:
+        Client = ClientFedAvg
+    elif args.fed_alg in ['scaffold']:
+        Client = ClientScaffold
+    elif args.fed_alg in ['fed_rs']:
+        Client = ClientFedRS
+
     # load simulation feature
     dm.load_sim_dict()
     # load client ids
@@ -285,7 +296,8 @@ if __name__ == '__main__':
             args, 
             global_model, 
             device=device, 
-            criterion=criterion
+            criterion=criterion,
+            client_ids=client_ids
         )
         server.initialize_log(fold_idx)
         server.sample_clients(
@@ -319,22 +331,41 @@ if __name__ == '__main__':
                 client_id = client_ids[idx]
                 dataloader = dataloader_dict[client_id]
                 if dataloader is None: continue
+
                 # initialize client object
                 client = Client(
                     args, 
                     device, 
                     criterion, 
                     dataloader, 
-                    copy.deepcopy(server.global_model)
+                    model=copy.deepcopy(server.global_model),
+                    label_dict=dm.label_dist_dict[client_id],
+                    num_class=constants.num_class_dict[args.dataset]
                 )
-                # server.global_model.state_dict()['classifier.2.bias']
-                client.update_weights()
-                # server append updates
-                server.save_train_updates(
-                    copy.deepcopy(client.get_parameters()), 
-                    client.result['sample'], 
-                    client.result
-                )
+
+                if args.fed_alg == 'scaffold':
+                    client.set_control(
+                        server_control=copy.deepcopy(server.server_control), 
+                        client_control=copy.deepcopy(server.client_controls[client_id])
+                    )
+                    client.update_weights()
+
+                    # server append updates
+                    server.set_client_control(client_id, copy.deepcopy(client.client_control))
+                    server.save_train_updates(
+                        copy.deepcopy(client.get_parameters()), 
+                        client.result['sample'], 
+                        client.result,
+                        delta_control=copy.deepcopy(client.delta_control)
+                    )
+                else:
+                    client.update_weights()
+                    # server append updates
+                    server.save_train_updates(
+                        copy.deepcopy(client.get_parameters()), 
+                        client.result['sample'], 
+                        client.result
+                    )
                 del client
             
             # 2. aggregate, load new global weights
@@ -371,10 +402,10 @@ if __name__ == '__main__':
         save_result_dict[f'fold{fold_idx}'] = server.summarize_dict_results()
         
         # output to results
-        jsonString = json.dumps(save_result_dict, indent=4)
-        jsonFile = open(str(save_json_path.joinpath('result.json')), "w")
-        jsonFile.write(jsonString)
-        jsonFile.close()
+        server.save_json_file(
+            save_result_dict, 
+            save_json_path.joinpath('result.json')
+        )
 
     # Calculate the average of the 5-fold experiments
     save_result_dict['average'] = dict()
@@ -386,7 +417,7 @@ if __name__ == '__main__':
         save_result_dict['average'][metric] = np.nanmean(result_list)
     
     # dump the dictionary
-    jsonString = json.dumps(save_result_dict, indent=4)
-    jsonFile = open(str(save_json_path.joinpath('result.json')), "w")
-    jsonFile.write(jsonString)
-    jsonFile.close()
+    server.save_json_file(
+        save_result_dict, 
+        save_json_path.joinpath('result.json')
+    )
