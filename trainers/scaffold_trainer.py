@@ -87,7 +87,7 @@ class ClientScaffold(object):
         
         for iter in range(int(self.args.local_epochs)):
             for batch_idx, batch_data in enumerate(self.dataloader):
-                
+                if self.args.dataset == 'extrasensory' and batch_idx > 20: continue
                 self.model.zero_grad()
                 optimizer.zero_grad()
                 x_a, x_b, l_a, l_b, y = batch_data
@@ -118,8 +118,8 @@ class ClientScaffold(object):
                 )
 
                 optimizer.step(
-                    server_control=self.server_control,
-                    client_control=self.client_control
+                    server_control=copy.deepcopy(self.server_control),
+                    client_control=copy.deepcopy(self.client_control)
                 )
                 
                 # save results

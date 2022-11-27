@@ -94,7 +94,7 @@ class Server(object):
         elif self.args.dataset in ['uci-har']:
             model_setting_str = f'{self.args.acc_feat}_{self.args.gyro_feat}'
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
-        elif self.args.dataset in ['extrasensory']:
+        elif self.args.dataset in ['extrasensory', 'ku-har']:
             model_setting_str = f'{self.args.acc_feat}_{self.args.gyro_feat}'
         elif self.args.dataset in ['extrasensory_watch']:
             model_setting_str = f'{self.args.acc_feat}_{self.args.watch_feat}'

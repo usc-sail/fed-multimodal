@@ -45,11 +45,6 @@ class ClientFedRS(object):
                 cnts.append(0)
         self.cnts = torch.FloatTensor(np.array(cnts))
         self.dist = self.cnts / self.cnts.sum()
-        # get distribution
-        self.dist = self.dist / self.dist.max()
-        alpha = 0.99
-        self.dist = self.dist * (1.0 - alpha) + alpha
-        self.dist = self.dist.reshape((1, -1))
         
     def get_parameters(self):
         # Return model parameters
@@ -71,6 +66,17 @@ class ClientFedRS(object):
         # Return groundtruth used for training
         return self.train_groundtruth
 
+    def restricted_softmax(
+        self, 
+        logits
+    ):
+        m_logits = torch.ones_like(logits[0]).to(self.device) * 0.9
+        for c in self.label_dict:
+            m_logits[c] = 1.0
+        for i in range(len(logits)):
+            logits[i] = torch.mul(logits[i], m_logits)
+        return logits
+
     def update_weights(self):
         # Set mode to train model
         self.model.train()
@@ -88,7 +94,7 @@ class ClientFedRS(object):
         
         for iter in range(int(self.args.local_epochs)):
             for batch_idx, batch_data in enumerate(self.dataloader):
-                
+                if self.args.dataset == 'extrasensory' and batch_idx > 20: continue
                 self.model.zero_grad()
                 optimizer.zero_grad()
                 x_a, x_b, l_a, l_b, y = batch_data
@@ -102,13 +108,30 @@ class ClientFedRS(object):
                     l_a, 
                     l_b
                 )
+
+                # get distribution
+                # self.dist = self.dist / self.dist.max()
+                # alpha = 0.95
+                # self.dist = self.dist * (1.0 - alpha) + alpha
+                # self.dist = self.dist.reshape((1, -1))
                 
                 if not self.multilabel:
                     # get outputs
                     outputs = self.model.classifier[:-1](x_mm)
                     # get classifier weight
                     ws = self.model.classifier[-1].weight
-                    outputs = self.dist.to(self.device) * outputs.mm(ws.transpose(0, 1))
+                    # pdb.set_trace()
+                    # outputs = nn.Softmax(dim=1)(outputs)
+                    m_logits = torch.ones_like(ws[:, 0]).to(self.device) * 0.9
+                    for c in self.label_dict: m_logits[c] = 1.0
+                    # outputs = outputs.mm(m_logits)
+                    # for i in range(len(outputs)):
+                    #    outputs[i] = torch.mul(outputs[i], m_logits)
+                    # outputs = self.restricted_softmax(outputs.clone())
+                    # pdb.set_trace()
+                    # outputs = torch.log(outputs)
+                    # outputs = self.restricted_softmax(outputs)
+                    outputs = torch.Tensor(m_logits).to(self.device) * outputs.mm(ws.transpose(0, 1))
                     outputs = torch.log_softmax(outputs, dim=1)
                     
                 # backward
