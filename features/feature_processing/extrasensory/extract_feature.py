@@ -51,8 +51,18 @@ if __name__ == '__main__':
 
     # Iterate over folds
     for fold_idx in range(1, 6):
-        acc_output_data_path = Path(args.output_dir).joinpath('feature', 'acc', args.dataset, f'fold{fold_idx}')
-        gyro_output_data_path = Path(args.output_dir).joinpath('feature', 'gyro', args.dataset, f'fold{fold_idx}')
+        acc_output_data_path = Path(args.output_dir).joinpath(
+            'feature', 
+            'acc', 
+            args.dataset, 
+            f'fold{fold_idx}'
+        )
+        gyro_output_data_path = Path(args.output_dir).joinpath(
+            'feature', 
+            'gyro', 
+            args.dataset, 
+            f'fold{fold_idx}'
+        )
         Path.mkdir(acc_output_data_path, parents=True, exist_ok=True)
         Path.mkdir(gyro_output_data_path, parents=True, exist_ok=True)
         
@@ -69,7 +79,7 @@ if __name__ == '__main__':
             acc_dict = copy.deepcopy(partition_dict[client_id])
             gyro_dict = copy.deepcopy(partition_dict[client_id])
             
-            if len(acc_dict) < 100 or len(gyro_dict) < 100: continue
+            if len(acc_dict) < 10 or len(gyro_dict) < 10: continue
             # iterate over keys
             for idx in tqdm(range(len(acc_dict))):
                 # 0. initialize acc, gyro file path
@@ -77,14 +87,18 @@ if __name__ == '__main__':
                 gyro_file_path = acc_dict[idx][1].replace('raw_acc', 'proc_gyro')
 
                 # 1.1 read acc data
-                acc_features = np.genfromtxt(str(acc_file_path), dtype=float, delimiter=' ')[:, 1:][::5]
+                acc_features = np.genfromtxt(str(acc_file_path), dtype=float, delimiter=' ')[:, 1:][::2]
+                # acc_features = np.genfromtxt(str(acc_file_path), dtype=float, delimiter=' ')[:, 1:][200:600]
+                # acc_features = np.genfromtxt(str(acc_file_path), dtype=float, delimiter=' ')[:, 1:]
                 # 1.2 normalize acc data
                 mean, std = np.mean(acc_features, axis=0), np.std(acc_features, axis=0)
                 acc_features = (acc_features - mean) / (std + 1e-5)
                 acc_dict[idx].append(copy.deepcopy(acc_features))
                 
                 # 2.1 read gyro data
-                gyro_features = np.genfromtxt(str(gyro_file_path), dtype=float, delimiter=' ')[:, 1:][::5]
+                gyro_features = np.genfromtxt(str(gyro_file_path), dtype=float, delimiter=' ')[:, 1:][::2]
+                # gyro_features = np.genfromtxt(str(gyro_file_path), dtype=float, delimiter=' ')[:, 1:][200:600]
+                # gyro_features = np.genfromtxt(str(gyro_file_path), dtype=float, delimiter=' ')[:, 1:]
                 # 2.2 normalize gyro data
                 mean, std = np.mean(gyro_features, axis=0), np.std(gyro_features, axis=0)
                 gyro_features = (gyro_features - mean) / (std + 1e-5)

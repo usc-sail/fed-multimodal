@@ -79,16 +79,36 @@ class partition_manager():
                 'joy': 2, 
                 'anger': 3
             }
+        elif self.args.dataset == 'ku-har':
+            self.label_dict  = {
+                '0.Stand': 0, 
+                '1.Sit': 1, 
+                '11.Walk': 2, 
+                '5.Lay': 3, 
+                '8.Jump': 4, 
+                '14.Run': 5, 
+                '15.Stair-up': 6, 
+                '16.Stair-down': 7
+            }
         elif self.args.dataset in ['extrasensory', 'extrasensory_watch']:
             self.label_dict = {
                 'label:SITTING': 0, 
-                'label:LYING_DOWN': 1,
-                'label:FIX_walking': 2,
-                'label:FIX_running': 3, 
-                'label:BICYCLING': 4,
-                'label:OR_standing': 5,
+                'label:FIX_walking': 1,
+                'label:BICYCLING': 2,
+                'label:OR_standing': 3,
                 'label:PHONE_ON_TABLE': 6,
-                'label:PHONE_IN_BAG': 7
+                'label:PHONE_IN_BAG': 7,
+                'label:PHONE_IN_HAND': 8,
+                'label:PHONE_IN_POCKET': 9
+                # 'label:LYING_DOWN': 1,
+                # 'label:LYING_DOWN': 1,
+            }
+            
+            self.har_label_dict = {
+                'label:SITTING': 0, 
+                'label:FIX_walking': 1,
+                'label:BICYCLING': 2,
+                'label:OR_standing': 3
             }
         elif self.args.dataset in ['ptb-xl']:
             self.label_dict = {

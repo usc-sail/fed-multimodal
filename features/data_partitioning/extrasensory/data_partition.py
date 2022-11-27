@@ -1,6 +1,7 @@
 # Author: Tiantian Feng, USC SAIL lab, tiantiaf@usc.edu
-import sys, os
+import json
 import pickle
+import sys, os
 import re, pdb
 import argparse
 import torchaudio
@@ -36,44 +37,52 @@ def data_partition(args: dict):
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
         
     # data root folder
-    if Path.exists(output_data_path.joinpath(f'partition.pkl')) == False:
+    if Path.exists(output_data_path.joinpath(f'partition.json')) == False:
         client_id_list = [user.parts[-1].split('.')[0] for user in Path(args.raw_data_dir).joinpath('ExtraSensory/uuid_label').iterdir() if '.gz' in user.parts[-1]]
         client_id_list.sort()
         
         client_data_dict = dict()
         for client_id in client_id_list:
             # read data names
-            logging.info(f'Processing data for {client_id}')
             client_data_dict[client_id] = list()
-            label_df = pd.read_csv(Path(args.raw_data_dir).joinpath('ExtraSensory/uuid_label', f'{client_id}.features_labels.csv.gz'), index_col=0)[pm.label_dict]
-            # pdb.set_trace()
+            label_df = pd.read_csv(Path(args.raw_data_dir).joinpath(
+                'ExtraSensory/uuid_label', 
+                f'{client_id}.features_labels.csv.gz'
+                ), index_col=0)[pm.label_dict]
+            
+            label_df = label_df.loc[label_df['label:PHONE_IN_POCKET'] == 1]
+            logging.info(f'Processing data for {client_id}, data size {len(label_df)}')
+            if len(label_df) == 0: continue
+            
             # iterate rows
             for index in tqdm(list(label_df.index), ncols=100, miniters=100):
-                row_df = label_df.loc[index, :]
-                if np.nansum(row_df) == 1:
-                    acc_file_path = Path(args.raw_data_dir).joinpath('ExtraSensory/raw_acc', client_id, str(index)+'.m_raw_acc.dat')
-                    gyro_file_path = Path(args.raw_data_dir).joinpath('ExtraSensory/proc_gyro', client_id, str(index)+'.m_proc_gyro.dat')
-                    if Path.exists(acc_file_path) and Path.exists(gyro_file_path):
-                        # if the label is on the table, skip
-                        label = pm.label_dict[row_df.index[row_df.argmax()]]
-                        if label == 6 or label == 7: continue
+                row_df = label_df.loc[index, pm.har_label_dict]
+                # pdb.set_trace()
+                # if np.nansum(row_df) == 1:
+                acc_file_path = Path(args.raw_data_dir).joinpath('ExtraSensory/raw_acc', client_id, str(index)+'.m_raw_acc.dat')
+                gyro_file_path = Path(args.raw_data_dir).joinpath('ExtraSensory/proc_gyro', client_id, str(index)+'.m_proc_gyro.dat')
+                if Path.exists(acc_file_path) and Path.exists(gyro_file_path):
+                    # if the label is on the table, skip
+                    label = pm.label_dict[row_df.index[row_df.argmax()]]
+                    if label > 5: continue
+                    # read data and check format
+                    acc_data = np.genfromtxt(str(acc_file_path), dtype=float, delimiter=' ')[:, 1:]
+                    if len(acc_data) != 800 and acc_data.shape[1] != 3: continue
+                    gyro_data = np.genfromtxt(str(gyro_file_path), dtype=float, delimiter=' ')[:, 1:]
+                    if len(gyro_data) != 800 and gyro_data.shape[1] != 3: continue
+                    if len(acc_data) != len(gyro_data): continue
+                    
+                    key = f'{client_id}/{str(index)}'
+                    client_data_dict[client_id].append([key, str(acc_file_path), label])
+        # dump json 
+        jsonString = json.dumps(client_data_dict, indent=4)
+        jsonFile = open(str(output_data_path.joinpath(f'partition.json')), "w")
+        jsonFile.write(jsonString)
+        jsonFile.close()
 
-                        # read data and check format
-                        acc_data = np.genfromtxt(str(acc_file_path), dtype=float, delimiter=' ')[:, 1:]
-                        if len(acc_data) != 800 and acc_data.shape[1] != 3: continue
-                        gyro_data = np.genfromtxt(str(gyro_file_path), dtype=float, delimiter=' ')[:, 1:]
-                        if len(gyro_data) != 800 and gyro_data.shape[1] != 3: continue
-                        if len(acc_data) != len(gyro_data): continue
-                        
-                        key = f'{client_id}/{str(index)}'
-                        client_data_dict[client_id].append([key, str(acc_file_path), label])
-        # pdb.set_trace()
-        with open(str(output_data_path.joinpath(f'partition.pkl')), 'wb') as handle:
-            pickle.dump(client_data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    
     # load processed partitions, for cv saving
-    with open(str(output_data_path.joinpath(f'partition.pkl')), "rb") as f: 
-        client_data_dict = pickle.load(f)
+    with open(str(output_data_path.joinpath(f'partition.json')), "r") as f:  
+        client_data_dict = json.load(f)
     
     for fold_idx in range(5):
         # read ids
@@ -96,8 +105,9 @@ def data_partition(args: dict):
         partition_dict['test'] = list()
         for client_id in train_ids:
             # read all keys
+            if client_id not in client_data_dict: continue
             train_val_arr = np.arange(len(client_data_dict[client_id]))
-            if len(train_val_arr) == 0: continue
+            if len(train_val_arr) < 10: continue
             
             # split train and dev from a client for later
             train_arr, dev_arr = pm.split_train_dev(train_val_arr)
@@ -115,8 +125,11 @@ def data_partition(args: dict):
         # save the partition
         output_data_path = Path(args.output_partition_path).joinpath(args.dataset, f'fold{fold_idx+1}')
         Path.mkdir(output_data_path, parents=True, exist_ok=True)
-        with open(output_data_path.joinpath(f'partition.pkl'), 'wb') as handle:
-            pickle.dump(partition_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        
+        jsonString = json.dumps(partition_dict, indent=4)
+        jsonFile = open(str(output_data_path.joinpath(f'partition.json')), "w")
+        jsonFile.write(jsonString)
+        jsonFile.close()
 
 
 if __name__ == "__main__":

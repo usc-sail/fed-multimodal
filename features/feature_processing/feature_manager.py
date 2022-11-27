@@ -190,7 +190,7 @@ class feature_manager():
                 f'fold{fold_idx}', 
                 f'partition_alpha{alpha_str}.{file_ext}'
             )
-        elif self.args.dataset in ["extrasensory", "extrasensory_watch", "crema_d"]:
+        elif self.args.dataset in ["extrasensory", "extrasensory_watch", "crema_d", "ku-har"]:
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 
                 self.args.dataset, 
