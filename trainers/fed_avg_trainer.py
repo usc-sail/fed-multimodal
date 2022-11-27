@@ -77,7 +77,7 @@ class ClientFedAvg(object):
                 lr=self.args.learning_rate,
                 momentum=0.9,
                 weight_decay=1e-5,
-                mu=1e-5
+                mu=1e-4
             )
             
         # last global model
@@ -85,7 +85,7 @@ class ClientFedAvg(object):
         
         for iter in range(int(self.args.local_epochs)):
             for batch_idx, batch_data in enumerate(self.dataloader):
-                
+                if self.args.dataset == 'extrasensory' and batch_idx > 20: continue
                 self.model.zero_grad()
                 optimizer.zero_grad()
                 x_a, x_b, l_a, l_b, y = batch_data

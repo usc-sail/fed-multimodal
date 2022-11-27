@@ -107,7 +107,7 @@ class DataloadManager():
         if self.args.dataset in ['ucf101', 'mit10', 'mit51', 'mit101', 'meld', 'crema_d']:
             self.get_audio_feat_path()
         # Initialize acc/gyro feature paths
-        if self.args.dataset in ['uci-har', 'extrasensory']:
+        if self.args.dataset in ['uci-har', 'extrasensory', "ku-har"]:
             self.get_acc_feat_path()
             self.get_gyro_feat_path()
         # Initialize acc/watch_acc feature paths
@@ -226,7 +226,7 @@ class DataloadManager():
                 f'alpha{alpha_str}', 
                 f'fold{fold_idx}'
             )
-        elif self.args.dataset in ["extrasensory", "extrasensory_watch"]:
+        elif self.args.dataset in ["extrasensory", "extrasensory_watch", "ku-har"]:
             data_path = self.acc_feat_path.joinpath(
                 f'fold{fold_idx}'
             )
@@ -324,7 +324,7 @@ class DataloadManager():
                 f'alpha{alpha_str}', 
                 f'{client_id}.pkl'
             )
-        elif self.args.dataset in ["extrasensory", "extrasensory_watch"]:
+        elif self.args.dataset in ["extrasensory", "extrasensory_watch", 'ku-har']:
             data_path = self.acc_feat_path.joinpath(
                 f'fold{fold_idx}', 
                 f'{client_id}.pkl'
@@ -368,7 +368,7 @@ class DataloadManager():
                 f'alpha{alpha_str}', 
                 f'{client_id}.pkl'
             )
-        elif self.args.dataset == "extrasensory":
+        elif self.args.dataset in ["extrasensory", "ku-har"]:
             data_path = self.gyro_feat_path.joinpath(
                 f'fold{fold_idx}', 
                 f'{client_id}.pkl'
@@ -516,7 +516,7 @@ class DataloadManager():
             self.sim_data = None
             return
         
-        if self.args.dataset in ["ucf101", "crema_d"]:
+        if self.args.dataset in ["ucf101", "crema_d", 'ku-har']:
             data_path = Path(self.args.data_dir).joinpath(
                 'simulation_feature',
                 self.args.dataset, 

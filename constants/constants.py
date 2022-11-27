@@ -22,7 +22,8 @@ num_class_dict = {
     'crema_d':              4,
     'uci-har':              6,
     'ptb-xl':               5,
-    'extrasensory':         6,
+    'extrasensory':         4,
+    'ku-har':               8,
     'extrasensory_watch':   6
 }
 
