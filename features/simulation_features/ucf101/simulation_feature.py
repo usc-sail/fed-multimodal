@@ -1,21 +1,28 @@
-# Author: Tiantian Feng, USC SAIL lab, tiantiaf@usc.edu
-import argparse
-import glob
-import os, sys
-import os.path as osp
+# Author: Tiantian Feng 
+# USC SAIL lab, tiantiaf@usc.edu
 import pdb
-import torch
+import json
+import glob
 import random
-import torchaudio
-import numpy as np
 import pickle
-import opensmile
-from pathlib import Path
+import os, sys
+import argparse
+import numpy as np
+import os.path as osp
+
 from tqdm import tqdm
+from pathlib import Path
 
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[1])))
 from simulation_manager import simulation_manager
 
+# Define logging console
+import logging
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
+    level=logging.INFO, 
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate Simulation Features')
@@ -108,6 +115,12 @@ if __name__ == '__main__':
     # initialize simulation manager
     sm = simulation_manager(args)
     
+    # logging information
+    if args.missing_modality:
+        logging.info(f'simulation missing_modality, alpha {args.alpha}, missing rate {args.missing_modailty_rate*100}%')
+    if args.label_nosiy:
+        logging.info(f'simulation label_nosiy, alpha {args.alpha}, label noise rate {args.label_nosiy_level}')
+    
     # save for later uses
     for fold_idx in range(3):
         # define output path
@@ -120,10 +133,16 @@ if __name__ == '__main__':
         partition_dict = sm.fetch_partition(fold_idx+1, alpha=args.alpha)
         
         for client_idx, client in enumerate(partition_dict):
-            partition_dict[client] = sm.simulation(partition_dict[client], seed=client_idx)
+            partition_dict[client] = sm.simulation(
+                partition_dict[client], 
+                seed=client_idx
+            )
             
         sm.get_simulation_setting(alpha=args.alpha)
         if len(sm.setting_str) != 0:
-            with open(output_data_path.joinpath(f'{sm.setting_str}.pkl'), 'wb') as handle:
-                pickle.dump(partition_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            jsonString = json.dumps(partition_dict, indent=4)
+            jsonFile = open(str(output_data_path.joinpath(f'{sm.setting_str}.json')), "w")
+            jsonFile.write(jsonString)
+            jsonFile.close()
+
             

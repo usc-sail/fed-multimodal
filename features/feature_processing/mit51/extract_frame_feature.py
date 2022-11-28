@@ -61,20 +61,23 @@ if __name__ == '__main__':
 
     # fetch all files for processing
     partition_dict = feature_manager.fetch_partition(alpha=args.alpha)
+    base_partition_dict = feature_manager.fetch_partition(alpha=1.0)
+
     print('Reading videos from folder: ', args.raw_data_dir)
     print('Total number of videos found: ', len(partition_dict.keys()))
     
     # extract data
     base_data_path = Path(args.output_dir).joinpath('feature', 'video', args.feature_type, args.dataset, f'alpha10')
-    client_file_paths = os.listdir(base_data_path)
-    client_file_paths.sort()
-    if len(client_file_paths) != len(partition_dict) and args.alpha == 1.0:
-        for client in tqdm(list(partition_dict.keys())[809:810]):
-            data_dict = partition_dict[client].copy()
+    base_client_file_paths = os.listdir(base_data_path)
+    base_client_file_paths.sort()
+
+    if len(base_client_file_paths) != len(base_partition_dict) and args.alpha == 1.0:
+        for client in tqdm(list(base_partition_dict.keys())[809:810]):
+            data_dict = base_partition_dict[client].copy()
             split = 'validation' if client == 'test' else 'training'
             if Path.exists(output_data_path.joinpath(f'{client}.pkl')) == True: continue
-            for idx in range(len(partition_dict[client])):
-                file_path = partition_dict[client][idx][1]
+            for idx in range(len(base_partition_dict[client])):
+                file_path = base_partition_dict[client][idx][1]
                 video_id, _ = osp.splitext(osp.basename(file_path))
                 label_str = osp.basename(osp.dirname(file_path))
                 features = feature_manager.extract_frame_features(video_id, label_str, max_len=8, split=split)
@@ -87,10 +90,10 @@ if __name__ == '__main__':
                 pickle.dump(data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     # save for alpha != 1.0
-    if len(client_file_paths) == len(partition_dict) and args.alpha != 1.0:
+    if len(base_client_file_paths) == len(base_partition_dict) and args.alpha != 1.0:
         train_dict = dict()
         logging.info('Read alpha=1.0 data')
-        for client_file_path in tqdm(client_file_paths[:-2]):
+        for client_file_path in tqdm(base_client_file_paths[:-2]):
             with open(str(base_data_path.joinpath(client_file_path)), "rb") as f: 
                 client_data = pickle.load(f)
             for idx in range(len(client_data)):
