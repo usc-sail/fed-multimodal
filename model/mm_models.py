@@ -10,8 +10,8 @@ import torch.nn as nn
 
 from torch import Tensor
 from torch.nn import functional as F
-from torch.nn.utils.rnn import pack_padded_sequence
 from torch.nn.utils.rnn import pad_packed_sequence
+from torch.nn.utils.rnn import pack_padded_sequence
 
 # typing import
 from typing import Dict, Iterable, Optional
@@ -43,7 +43,7 @@ class MMActionClassifier(nn.Module):
         # RNN module
         self.audio_rnn = nn.GRU(
             input_size=n_filters*4, 
-            hidden_size=d_hid, 
+            hidden_size=d_hid,
             num_layers=1, 
             batch_first=True, 
             dropout=self.dropout_p, 
@@ -100,10 +100,10 @@ class MMActionClassifier(nn.Module):
         # classifier head
         if self.en_att and self.att_name == "fuse_base":
             self.classifier = nn.Sequential(
-                nn.Linear(d_hid, d_hid),
+                nn.Linear(d_hid, 64),
                 nn.ReLU(),
                 nn.Dropout(self.dropout_p),
-                nn.Linear(d_hid, num_classes)
+                nn.Linear(64, num_classes)
             )
         else:
             # Projection head
@@ -128,12 +128,44 @@ class MMActionClassifier(nn.Module):
                 torch.nn.init.xavier_uniform(m.weight)
                 m.bias.data.fill_(0.01)
 
-    def forward(self, x_audio, x_video, len_a, len_v):
+    def forward(
+        self, 
+        x_audio, 
+        x_video, 
+        len_a, 
+        len_v
+    ):
         # 1. Conv forward
         x_audio = self.audio_conv(x_audio)
+        
         # 2. Rnn forward
-        x_audio, _ = self.audio_rnn(x_audio) # [BxT_axD]
-        x_video, _ = self.video_rnn(x_video) # [BxT_vxD]
+        # max pooling, time dim reduce by 8 times
+        len_a = len_a//8
+        x_audio_packed_input = pack_padded_sequence(
+            x_audio, 
+            len_a.cpu().numpy(), 
+            batch_first=True, 
+            enforce_sorted=False
+        )
+
+        x_video_packed_input = pack_padded_sequence(
+            x_video, 
+            len_v.cpu().numpy(), 
+            batch_first=True, 
+            enforce_sorted=False
+        )
+
+        x_audio, _ = self.audio_rnn(x_audio_packed_input) 
+        x_video, _ = self.video_rnn(x_video_packed_input) 
+        x_audio, _ = pad_packed_sequence(   
+            x_audio, 
+            batch_first=True
+        )
+        x_video, _ = pad_packed_sequence(
+            x_video, 
+            batch_first=True
+        )
+
         # 3. Attention
         if self.en_att:
             if self.att_name == 'multihead':
@@ -147,9 +179,10 @@ class MMActionClassifier(nn.Module):
                 x_audio = self.audio_att(x_audio, x_audio, x_audio, len_a)
                 x_video = self.video_att(x_video, x_video, x_video, len_v)
             elif self.att_name == "fuse_base":
-                # max pooling, time dim reduce by 8 times
-                real_a_len = len_a//8
-                x_mm = self.fuse_att(x_audio, x_video, real_a_len, len_v)
+                # get attention output
+                a_max_len = x_audio.shape[1]
+                x_mm = torch.concat((x_audio, x_video), dim=1)
+                x_mm = self.fuse_att(x_mm, len_a, len_v, a_max_len)
             elif self.att_name == 'base':
                 # get attention output
                 x_audio = self.audio_att(x_audio)
@@ -690,24 +723,16 @@ class FuseBaseSelfAttention(nn.Module):
 
     def forward(
         self,
-        x_a: Tensor,
-        x_b: Tensor,
+        x: Tensor,
         val_a=None,
-        val_b=None
+        val_b=None,
+        a_len=None
     ):
-        # get attention output
-        x = torch.concat((x_a, x_b), dim=1)
-        max_a = x_a.shape[1]
-        max_b = x_b.shape[1]
-        
         att = self.att_pool(self.att_fc1(x))
         att = self.att_fc2(att).squeeze(-1)
-        if val_a is not None:
-            for idx in range(len(val_a)):
-                att[idx, val_a[idx]:max_a] = -1e6
-        if val_b is not None:
-            for idx in range(len(val_b)):
-                att[idx, max_a+val_b[idx]:] = -1e6
+        for idx in range(len(val_a)):
+            att[idx, val_a[idx]:a_len] = -1e5
+            att[idx, a_len+val_b[idx]:] = -1e5
         att = torch.softmax(att, dim=1)
         x = (att.unsqueeze(2) * x).sum(axis=1)
         return x

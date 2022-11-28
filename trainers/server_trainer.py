@@ -105,6 +105,7 @@ class Server(object):
         else:
             raise ValueError(f'Data set not support {self.args.dataset}')
         # training settings: local epochs, learning rate, batch size, client sample rate
+        model_setting_str += '_hid'+str(self.args.hid_size)
         model_setting_str += '_le'+str(self.args.local_epochs)
         model_setting_str += '_lr' + str(self.args.learning_rate).replace('.', '')
         model_setting_str += '_bs'+str(self.args.batch_size)
@@ -274,10 +275,17 @@ class Server(object):
         self.log_writer.add_scalar(f'Acc/{data_split}', acc, self.epoch)
         self.log_writer.add_scalar(f'Macro-F1/{data_split}', macro_f, self.epoch)
 
-    def save_result(self):
-        f = open(str(self.model_result_path.joinpath('results.pkl')), "wb")
-        pickle.dump(result_dict, f)
-        f.close()
+    def save_result(
+        self, 
+        file_path
+    ):
+        jsonString = json.dumps(
+            self.result_dict, 
+            indent=4
+        )
+        jsonFile = open(str(file_path), "w")
+        jsonFile.write(jsonString)
+        jsonFile.close()
 
     def save_train_updates(
         self, 
