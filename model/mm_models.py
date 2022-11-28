@@ -29,7 +29,7 @@ class MMActionClassifier(nn.Module):
         att_name: str=''        # Attention Name
     ):
         super(MMActionClassifier, self).__init__()
-        self.dropout_p = 0.1
+        self.dropout_p = 0.25
         self.en_att = en_att
         self.att_name = att_name
         
@@ -88,25 +88,36 @@ class MMActionClassifier(nn.Module):
             self.video_att = BaseSelfAttention(
                 d_hid=d_hid
             )
-        elif self.att_name == "hirarchical":
-            self.att = HirarchicalAttention(
+        elif self.att_name == "fuse_base":
+            self.fuse_att = FuseBaseSelfAttention(
                 d_hid=d_hid
             )
+        elif self.att_name == "hirarchical":
+            self.att = HirarchicalAttention(
+                d_hid=rnn_input
+            )
         
-        # Projection head
-        self.audio_proj = nn.Linear(d_hid, 64)
-        self.video_proj = nn.Linear(d_hid, 64)
-
-        # Projection head
-        self.init_weight()
-
         # classifier head
-        self.classifier = nn.Sequential(
-            nn.Linear(128, 128),
-            nn.ReLU(),
-            nn.Dropout(self.dropout_p),
-            nn.Linear(128, num_classes)
-        )
+        if self.en_att and self.att_name == "fuse_base":
+            self.classifier = nn.Sequential(
+                nn.Linear(d_hid, d_hid),
+                nn.ReLU(),
+                nn.Dropout(self.dropout_p),
+                nn.Linear(d_hid, num_classes)
+            )
+        else:
+            # Projection head
+            self.audio_proj = nn.Linear(d_hid, d_hid)
+            self.video_proj = nn.Linear(d_hid, d_hid)
+            self.classifier = nn.Sequential(
+                nn.Linear(d_hid*2, d_hid),
+                nn.ReLU(),
+                nn.Dropout(self.dropout_p),
+                nn.Linear(d_hid, num_classes)
+            )
+            
+         # Projection head
+        self.init_weight()
 
     def init_weight(self):
         for m in self._modules:
@@ -135,6 +146,10 @@ class MMActionClassifier(nn.Module):
                 # get attention output
                 x_audio = self.audio_att(x_audio, x_audio, x_audio, len_a)
                 x_video = self.video_att(x_video, x_video, x_video, len_v)
+            elif self.att_name == "fuse_base":
+                # max pooling, time dim reduce by 8 times
+                real_a_len = len_a//8
+                x_mm = self.fuse_att(x_audio, x_video, real_a_len, len_v)
             elif self.att_name == 'base':
                 # get attention output
                 x_audio = self.audio_att(x_audio)
@@ -145,11 +160,11 @@ class MMActionClassifier(nn.Module):
             x_video = torch.mean(x_video, axis=1)
 
         # 5. Projection
-        x_audio = self.audio_proj(x_audio)
-        x_video = self.video_proj(x_video)
-           
+        if self.en_att and self.att_name != "fuse_base":
+            x_audio = self.audio_proj(x_audio)
+            x_video = self.video_proj(x_video)
+            x_mm = torch.concat((x_audio, x_video), dim=1)
         # 6. MM embedding and predict
-        x_mm = torch.concat((x_audio, x_video), dim=1)
         preds = self.classifier(x_mm)
         return preds, x_mm
 
@@ -658,6 +673,41 @@ class BaseSelfAttention(nn.Module):
         if val_l is not None:
             for idx in range(len(val_l)):
                 att[idx, val_l[idx]:] = -1e6
+        att = torch.softmax(att, dim=1)
+        x = (att.unsqueeze(2) * x).sum(axis=1)
+        return x
+    
+class FuseBaseSelfAttention(nn.Module):
+    # https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8421023
+    def __init__(
+        self, 
+        d_hid:  int=64
+    ):
+        super().__init__()
+        self.att_fc1 = nn.Linear(d_hid, 1)
+        self.att_pool = nn.Tanh()
+        self.att_fc2 = nn.Linear(1, 1)
+
+    def forward(
+        self,
+        x_a: Tensor,
+        x_b: Tensor,
+        val_a=None,
+        val_b=None
+    ):
+        # get attention output
+        x = torch.concat((x_a, x_b), dim=1)
+        max_a = x_a.shape[1]
+        max_b = x_b.shape[1]
+        
+        att = self.att_pool(self.att_fc1(x))
+        att = self.att_fc2(att).squeeze(-1)
+        if val_a is not None:
+            for idx in range(len(val_a)):
+                att[idx, val_a[idx]:max_a] = -1e6
+        if val_b is not None:
+            for idx in range(len(val_b)):
+                att[idx, max_a+val_b[idx]:] = -1e6
         att = torch.softmax(att, dim=1)
         x = (att.unsqueeze(2) * x).sum(axis=1)
         return x
