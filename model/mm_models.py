@@ -29,7 +29,7 @@ class MMActionClassifier(nn.Module):
         att_name: str=''        # Attention Name
     ):
         super(MMActionClassifier, self).__init__()
-        self.dropout_p = 0.25
+        self.dropout_p = 0.1
         self.en_att = en_att
         self.att_name = att_name
         
@@ -263,18 +263,31 @@ class SERClassifier(nn.Module):
             self.text_att = BaseSelfAttention(
                 d_hid=d_hid
             )
+        elif self.att_name == "fuse_base":
+            self.fuse_att = FuseBaseSelfAttention(
+                d_hid=d_hid
+            )
         
-        # Projection head
-        self.audio_proj = nn.Linear(d_hid, 64)
-        self.text_proj = nn.Linear(d_hid, 64)
-        self.init_weight()
-
         # classifier head
-        self.classifier = nn.Sequential(
-            nn.Linear(128, 128),
-            nn.ReLU(),
-            nn.Linear(128, num_classes)
-        )
+        if self.en_att and self.att_name == "fuse_base":
+            self.classifier = nn.Sequential(
+                nn.Linear(d_hid, 64),
+                nn.ReLU(),
+                nn.Dropout(self.dropout_p),
+                nn.Linear(64, num_classes)
+            )
+        else:
+            # Projection head
+            self.audio_proj = nn.Linear(d_hid, 64)
+            self.text_proj = nn.Linear(d_hid, 64)
+            self.init_weight()
+
+            # classifier head
+            self.classifier = nn.Sequential(
+                nn.Linear(128, 128),
+                nn.ReLU(),
+                nn.Linear(128, num_classes)
+            )
         
     def init_weight(self):
         for m in self._modules:
@@ -285,12 +298,38 @@ class SERClassifier(nn.Module):
                 torch.nn.init.xavier_uniform(m.weight)
                 m.bias.data.fill_(0.01)
 
-    def forward(self, x_audio, x_text, l_a, l_b):
+    def forward(self, x_audio, x_text, len_a, len_t):
         # 1. Conv forward
         x_audio = self.audio_conv(x_audio)
+        
         # 2. Rnn forward
-        x_audio, _ = self.audio_rnn(x_audio)
-        x_text, _ = self.text_rnn(x_text)
+        # max pooling, time dim reduce by 8 times
+        len_a = len_a//8
+        x_audio_packed_input = pack_padded_sequence(
+            x_audio, 
+            len_a.cpu().numpy(), 
+            batch_first=True, 
+            enforce_sorted=False
+        )
+
+        x_text_packed_input = pack_padded_sequence(
+            x_text, 
+            len_t.cpu().numpy(), 
+            batch_first=True, 
+            enforce_sorted=False
+        )
+
+        x_audio, _ = self.audio_rnn(x_audio_packed_input) 
+        x_text, _ = self.text_rnn(x_text_packed_input) 
+        x_audio, _ = pad_packed_sequence(   
+            x_audio,
+            batch_first=True
+        )
+        x_text, _ = pad_packed_sequence(
+            x_text,
+            batch_first=True
+        )
+        
         # 3. Attention
         if self.en_att:
             if self.att_name == 'multihead':
@@ -303,15 +342,23 @@ class SERClassifier(nn.Module):
                 # get attention output
                 x_audio = self.audio_att(x_audio)
                 x_text = self.text_att(x_text, l_b)
+            elif self.att_name == "fuse_base":
+                # get attention output
+                a_max_len = x_audio.shape[1]
+                x_mm = torch.concat((x_audio, x_text), dim=1)
+                x_mm = self.fuse_att(x_mm, len_a, len_t, a_max_len)
         else:
             # 4. Average pooling
             x_audio = torch.mean(x_audio, axis=1)
             x_text = torch.mean(x_text, axis=1)
+        
         # 5. Projection
-        x_audio = self.audio_proj(x_audio)
-        x_text = self.text_proj(x_text)
+        if self.en_att and self.att_name != "fuse_base":
+            x_audio = self.audio_proj(x_audio)
+            x_text = self.text_proj(x_text)
+            x_mm = torch.concat((x_audio, x_text), dim=1)
+        
         # 6. MM embedding and predict
-        x_mm = torch.concat((x_audio, x_text), dim=1)
         preds = self.classifier(x_mm)
         return preds, x_mm
 
@@ -380,18 +427,33 @@ class HARClassifier(nn.Module):
         elif self.att_name == "base":
             self.acc_att = BaseSelfAttention(d_hid=d_hid)
             self.gyro_att = BaseSelfAttention(d_hid=d_hid)
+        elif self.att_name == "fuse_base":
+            self.fuse_att = FuseBaseSelfAttention(
+                d_hid=d_hid
+            )
+        
+        # classifier head
+        if self.en_att and self.att_name == "fuse_base":
+            self.classifier = nn.Sequential(
+                nn.Linear(d_hid, 64),
+                nn.ReLU(),
+                nn.Dropout(self.dropout_p),
+                nn.Linear(64, num_classes)
+            )
+        else:
+            # Projection head
+            self.acc_proj = nn.Linear(d_hid, 64)
+            self.gyro_proj = nn.Linear(d_hid, 64)
+            
+            # Classifier head
+            self.classifier = nn.Sequential(
+                nn.Linear(128, 128),
+                nn.ReLU(),
+                nn.Linear(128, num_classes)
+            )
+        
         self.init_weight()
 
-        # Projection head
-        self.acc_proj = nn.Linear(d_hid, 64)
-        self.gyro_proj = nn.Linear(d_hid, 64)
-        
-        # Classifier head
-        self.classifier = nn.Sequential(
-            nn.Linear(128, 128),
-            nn.ReLU(),
-            nn.Linear(128, num_classes)
-        )
 
     def init_weight(self):
         for m in self._modules:
@@ -422,16 +484,22 @@ class HARClassifier(nn.Module):
                 # get attention output
                 x_acc = self.acc_att(x_acc)
                 x_gyro = self.gyro_att(x_gyro)
+            elif self.att_name == "fuse_base":
+                # get attention output
+                x_mm = torch.concat((x_acc, x_gyro), dim=1)
+                x_mm = self.fuse_att(x_mm)
         else:
             # 4. Average pooling
             x_acc = torch.mean(x_acc, axis=1)
             x_gyro = torch.mean(x_gyro, axis=1)
 
         # 5. Projection
-        x_acc = self.acc_proj(x_acc)
-        x_gyro = self.gyro_proj(x_gyro)
+        if self.en_att and self.att_name != "fuse_base":
+            x_acc = self.acc_proj(x_acc)
+            x_gyro = self.gyro_proj(x_gyro)
+            x_mm = torch.concat((x_acc, x_gyro), dim=1)
+        
         # 6. MM embedding and predict
-        x_mm = torch.concat((x_acc, x_gyro), dim=1)
         preds = self.classifier(x_mm)
         return preds, x_mm
 
@@ -444,11 +512,13 @@ class ECGClassifier(nn.Module):
         v1_to_v6_input_dim: int,    # v1-v6 ecg
         d_hid: int=64,              # Hidden Layer size
         n_filters: int=32,          # number of filters
-        en_att: bool=False          # Enable self attention or not
+        en_att: bool=False,         # Enable self attention or not
+        att_name: str=''            # Attention Name
     ):
         super(ECGClassifier, self).__init__()
         self.dropout_p = 0.1
         self.en_att = en_att
+        self.att_name = att_name
         
         # Conv Encoder module
         self.i_to_avf_conv = Conv1dEncoder(
@@ -470,7 +540,7 @@ class ECGClassifier(nn.Module):
             num_layers=1, 
             batch_first=True, 
             dropout=self.dropout_p, 
-            bidirectional=True
+            bidirectional=False
         )
 
         self.v1_to_v6_rnn = nn.GRU(
@@ -479,24 +549,33 @@ class ECGClassifier(nn.Module):
             num_layers=1, 
             batch_first=True, 
             dropout=self.dropout_p, 
-            bidirectional=True
+            bidirectional=False
         )
 
-        # Self attention module
-        self.i_to_avf_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
-        self.v1_to_v6_att = SelfAttention(d_hid=d_hid, d_att=256, n_head=4)
-        self.init_weight()
-
-        # Projection head
-        self.i_to_avf_proj = nn.Linear(d_hid*2, 64)
-        self.v1_to_v6_proj = nn.Linear(d_hid*2, 64)
+        # classifier head
+        if self.en_att and self.att_name == "fuse_base":
+            self.fuse_att = FuseBaseSelfAttention(
+                d_hid=d_hid
+            )
+            self.classifier = nn.Sequential(
+                nn.Linear(d_hid, 64),
+                nn.ReLU(),
+                nn.Dropout(self.dropout_p),
+                nn.Linear(64, num_classes)
+            )
+        else:
+            # Projection head
+            self.i_to_avf_proj = nn.Linear(d_hid*2, 64)
+            self.v1_to_v6_proj = nn.Linear(d_hid*2, 64)
+            
+            # Classifier head
+            self.classifier = nn.Sequential(
+                nn.Linear(128, 64),
+                nn.ReLU(),
+                nn.Linear(64, num_classes)
+            )
         
-        # Classifier head
-        self.classifier = nn.Sequential(
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, num_classes)
-        )
+        self.init_weight()
 
     def init_weight(self):
         for m in self._modules:
@@ -507,7 +586,7 @@ class ECGClassifier(nn.Module):
                 torch.nn.init.xavier_uniform(m.weight)
                 m.bias.data.fill_(0.01)
 
-    def forward(self, x_i_to_avf, x_v1_to_v6):
+    def forward(self, x_i_to_avf, x_v1_to_v6, l_a, l_b):
         # 1. Conv forward
         x_i_to_avf = self.i_to_avf_conv(x_i_to_avf)
         x_v1_to_v6 = self.v1_to_v6_conv(x_v1_to_v6)
@@ -516,16 +595,18 @@ class ECGClassifier(nn.Module):
         x_v1_to_v6, _ = self.v1_to_v6_rnn(x_v1_to_v6)
         # 3. Attention
         if self.en_att:
-            x_i_to_avf = self.i_to_avf_att(x_i_to_avf)
-            x_v1_to_v6 = self.v1_to_v6_att(x_v1_to_v6)
-        # 4. Average pooling
-        x_i_to_avf = torch.mean(x_i_to_avf, axis=1)
-        x_v1_to_v6 = torch.mean(x_v1_to_v6, axis=1)
-        # 5. Projection
-        x_i_to_avf = self.i_to_avf_proj(x_i_to_avf)
-        x_v1_to_v6 = self.v1_to_v6_proj(x_v1_to_v6)
-        # 6. MM embedding and predict
-        x_mm = torch.concat((x_i_to_avf, x_v1_to_v6), dim=1)
+            # get attention output
+            x_mm = torch.concat((x_i_to_avf, x_v1_to_v6), dim=1)
+            x_mm = self.fuse_att(x_mm)
+        else:
+            # 4. Average pooling
+            x_i_to_avf = torch.mean(x_i_to_avf, axis=1)
+            x_v1_to_v6 = torch.mean(x_v1_to_v6, axis=1)
+            # 5. Projection
+            x_i_to_avf = self.i_to_avf_proj(x_i_to_avf)
+            x_v1_to_v6 = self.v1_to_v6_proj(x_v1_to_v6)
+            # 6. MM embedding and predict
+            x_mm = torch.concat((x_i_to_avf, x_v1_to_v6), dim=1)
         preds = self.classifier(x_mm)
         return preds, x_mm
 
@@ -730,9 +811,10 @@ class FuseBaseSelfAttention(nn.Module):
     ):
         att = self.att_pool(self.att_fc1(x))
         att = self.att_fc2(att).squeeze(-1)
-        for idx in range(len(val_a)):
-            att[idx, val_a[idx]:a_len] = -1e5
-            att[idx, a_len+val_b[idx]:] = -1e5
+        if val_a is not None:
+            for idx in range(len(val_a)):
+                att[idx, val_a[idx]:a_len] = -1e5
+                att[idx, a_len+val_b[idx]:] = -1e5
         att = torch.softmax(att, dim=1)
         x = (att.unsqueeze(2) * x).sum(axis=1)
         return x
