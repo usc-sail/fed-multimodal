@@ -130,7 +130,10 @@ if __name__ == '__main__':
             f'fold{fold_idx+1}'
         )
         Path.mkdir(output_data_path, parents=True, exist_ok=True)
-        partition_dict = sm.fetch_partition(fold_idx+1, alpha=args.alpha)
+        partition_dict = sm.fetch_partition(
+            fold_idx+1, 
+            alpha=args.alpha
+        )
         
         for client_idx, client in enumerate(partition_dict):
             partition_dict[client] = sm.simulation(

@@ -470,8 +470,9 @@ class DataloadManager():
                 if sim_data[1] == 1: data_b[idx][-1] = None
                 # label noise
                 data_a[idx][-2] = sim_data[2]
-                
-            if sim_data[0] == 1 and sim_data[1]:
+            
+            # return None when both modalities are missing
+            if sim_data[0] == 1 and sim_data[1] == 1:
                 return None
                 
         data_ab = MMDatasetGenerator(

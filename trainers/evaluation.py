@@ -6,6 +6,7 @@ import copy, pdb, time, warnings, torch
 
 from torch import nn
 from torch.utils import data
+from sklearn.metrics import f1_score
 from sklearn.metrics import confusion_matrix
 from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import accuracy_score, recall_score
@@ -56,6 +57,7 @@ class EvalMetric(object):
         result_dict['conf'] = np.round(confusion_matrix(self.truth_list, self.pred_list, normalize='true')*100, decimals=2)
         result_dict["loss"] = np.mean(self.loss_list)
         result_dict["sample"] = len(self.truth_list)
+        result_dict['f1'] = f1_score(self.truth_list, self.pred_list, average='macro')*100
         return result_dict
 
     def multilabel_summary(self):
