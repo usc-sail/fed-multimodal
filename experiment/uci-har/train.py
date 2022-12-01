@@ -73,6 +73,13 @@ def parse_args():
     )
     
     parser.add_argument(
+        '--global_learning_rate', 
+        default=0.05,
+        type=float,
+        help="learning rate",
+    )
+    
+    parser.add_argument(
         '--sample_rate', 
         default=0.1,
         type=float,
@@ -98,6 +105,13 @@ def parse_args():
         default=1,
         type=int,
         help="local epochs",
+    )
+    
+    parser.add_argument(
+        '--hid_size',
+        type=int, 
+        default=64,
+        help='RNN hidden size dim'
     )
     
     parser.add_argument(
@@ -234,7 +248,7 @@ if __name__ == '__main__':
     if torch.cuda.is_available(): print('GPU available, use GPU')
     save_result_dict = dict()
 
-    if args.fed_alg in ['fed_avg', 'fed_prox']:
+    if args.fed_alg in ['fed_avg', 'fed_prox', 'fed_opt']:
         Client = ClientFedAvg
     elif args.fed_alg in ['scaffold']:
         Client = ClientScaffold
@@ -286,7 +300,7 @@ if __name__ == '__main__':
             acc_input_dim=constants.feature_len_dict[args.acc_feat],    # Acc data input dim
             gyro_input_dim=constants.feature_len_dict[args.gyro_feat],  # Gyro data input dim
             en_att=args.att,                                            # Enable self attention or not
-            d_hid=64,
+            d_hid=args.hid_size,
             att_name=args.att_name
         )
         global_model = global_model.to(device)
@@ -304,6 +318,7 @@ if __name__ == '__main__':
             num_of_clients, 
             sample_rate=args.sample_rate
         )
+        server.get_num_params()
 
         # save json path
         save_json_path = Path(os.path.realpath(__file__)).parents[2].joinpath(
@@ -326,13 +341,16 @@ if __name__ == '__main__':
             # define list varibles that saves the weights, loss, num_sample, etc.
             server.initialize_epoch_updates(epoch)
             # 1. Local training, return weights in fed_avg, return gradients in fed_sgd
+            skip_client_ids = list()
             for idx in server.clients_list[epoch]:
                 # Local training
                 client_id = client_ids[idx]
                 dataloader = dataloader_dict[client_id]
-                if dataloader is None: continue
+                if dataloader is None:
+                    skip_client_ids.append(client_id)
+                    continue
 
-                # initialize client object
+                # Initialize client object
                 client = Client(
                     args, 
                     device, 
@@ -368,13 +386,16 @@ if __name__ == '__main__':
                     )
                 del client
             
+            # logging skip client
+            logging.info(f'Client Round: {epoch}, Skip client {skip_client_ids}')
+            
             # 2. aggregate, load new global weights
             if len(server.num_samples_list) == 0: continue
             server.average_weights()
             logging.info('---------------------------------------------------------')
             server.log_classification_result(
                 data_split='train',
-                metric='uar'
+                metric='f1'
             )
             if epoch % args.test_frequency == 0:
                 with torch.no_grad():
@@ -383,7 +404,7 @@ if __name__ == '__main__':
                     server.result_dict[epoch]['dev'] = server.result
                     server.log_classification_result(
                         data_split='dev',
-                        metric='uar'
+                        metric='f1'
                     )
 
                     # 4. Perform the test on holdout set
@@ -391,11 +412,11 @@ if __name__ == '__main__':
                     server.result_dict[epoch]['test'] = server.result
                     server.log_classification_result(
                         data_split='test',
-                        metric='uar'
+                        metric='f1'
                     )
                 
                 logging.info('---------------------------------------------------------')
-                server.log_epoch_result(metric='uar')
+                server.log_epoch_result(metric='f1')
             logging.info('---------------------------------------------------------')
 
         # Performance save code
@@ -409,7 +430,7 @@ if __name__ == '__main__':
 
     # Calculate the average of the 5-fold experiments
     save_result_dict['average'] = dict()
-    for metric in ['uar', 'acc', 'top5_acc']:
+    for metric in ['f1', 'acc', 'top5_acc']:
         result_list = list()
         for key in save_result_dict:
             if metric not in save_result_dict[key]: continue
