@@ -3,12 +3,10 @@
 import pdb
 import json
 import glob
-import torch
 import random
 import pickle
 import os, sys
 import argparse
-import torchaudio
 import numpy as np
 import os.path as osp
 
@@ -21,6 +19,13 @@ sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[3]), '
 import constants
 from simulation_manager import simulation_manager
 
+# Define logging console
+import logging
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
+    level=logging.INFO, 
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate Simulation Features')
@@ -116,6 +121,12 @@ if __name__ == '__main__':
     
     # initialize simulation manager
     sm = simulation_manager(args)
+
+    # logging information
+    if args.missing_modality:
+        logging.info(f'simulation missing_modality, alpha {args.alpha}, missing rate {args.missing_modailty_rate*100}%')
+    if args.label_nosiy:
+        logging.info(f'simulation label_nosiy, alpha {args.alpha}, label noise rate {args.label_nosiy_level*100}%')
     
     # save folder
     output_data_path = Path(args.output_dir).joinpath(
