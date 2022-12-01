@@ -75,6 +75,13 @@ def parse_args():
         type=float,
         help="learning rate",
     )
+
+    parser.add_argument(
+        '--global_learning_rate', 
+        default=0.05,
+        type=float,
+        help="learning rate",
+    )
     
     parser.add_argument(
         '--att', 
@@ -95,6 +102,13 @@ def parse_args():
         type=str, 
         default='multihead',
         help='attention name'
+    )
+    
+    parser.add_argument(
+        '--hid_size',
+        type=int, 
+        default=64,
+        help='RNN hidden size dim'
     )
 
     parser.add_argument(
@@ -238,7 +252,7 @@ if __name__ == '__main__':
 
     save_result_dict = dict()
 
-    if args.fed_alg in ['fed_avg', 'fed_prox']:
+    if args.fed_alg in ['fed_avg', 'fed_prox', 'fed_opt']:
         Client = ClientFedAvg
     elif args.fed_alg in ['scaffold']:
         Client = ClientScaffold
@@ -295,7 +309,7 @@ if __name__ == '__main__':
             num_classes=constants.num_class_dict[args.dataset],
             audio_input_dim=constants.feature_len_dict["mfcc"], 
             video_input_dim=constants.feature_len_dict["mobilenet_v2"],
-            d_hid=64,
+            d_hid=args.hid_size,
             en_att=args.att,
             att_name=args.att_name
         )
@@ -337,11 +351,14 @@ if __name__ == '__main__':
             # define list varibles that saves the weights, loss, num_sample, etc.
             server.initialize_epoch_updates(epoch)
             # 1. Local training, return weights in fed_avg, return gradients in fed_sgd
+            skip_client_ids = list()
             for idx in server.clients_list[epoch]:
                 # Local training
                 client_id = client_ids[idx]
                 dataloader = dataloader_dict[client_id]
-                if dataloader is None: continue
+                if dataloader is None:
+                    skip_client_ids.append(client_id)
+                    continue
                 # initialize client object
                 client = Client(
                     args, 
@@ -377,6 +394,9 @@ if __name__ == '__main__':
                         client.result
                     )
                 del client
+            
+            # logging skip client
+            logging.info(f'Client Round: {epoch}, Skip client {skip_client_ids}')
             
             # 2. aggregate, load new global weights
             if len(server.num_samples_list) == 0: continue

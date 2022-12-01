@@ -1,3 +1,4 @@
+import json
 import torch
 import random
 import numpy as np
@@ -17,10 +18,14 @@ sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), '
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'constants'))
 
 import constants
-from client_trainer import Client
 from server_trainer import Server
 from mm_models import MMActionClassifier
 from dataload_manager import DataloadManager
+
+# trainer
+from fed_rs_trainer import ClientFedRS
+from fed_avg_trainer import ClientFedAvg
+from scaffold_trainer import ClientScaffold
 
 # define logging console
 import logging
@@ -124,6 +129,13 @@ def parse_args():
         action='store_true',
         help="enable self-attention"
     )
+
+    parser.add_argument(
+        '--att_name',
+        type=str, 
+        default='multihead',
+        help='attention name'
+    )
     
     parser.add_argument(
         '--batch_size',
@@ -223,8 +235,14 @@ if __name__ == '__main__':
     # find device
     device = torch.device("cuda:1") if torch.cuda.is_available() else "cpu"
     if torch.cuda.is_available(): print('GPU available, use GPU')
+    save_result_dict = dict()
 
-    save_result_df = pd.DataFrame()
+    if args.fed_alg in ['fed_avg', 'fed_prox']:
+        Client = ClientFedAvg
+    elif args.fed_alg in ['scaffold']:
+        Client = ClientScaffold
+    elif args.fed_alg in ['fed_rs']:
+        Client = ClientFedRS
 
     # load simulation feature
     dm.load_sim_dict()
@@ -240,6 +258,10 @@ if __name__ == '__main__':
         video_dict = dm.load_video_feat(
             client_id=client_id
         )
+        dm.get_label_dist(
+            video_dict, 
+            client_id
+        )
         shuffle = False if client_id in ['dev', 'test'] else True
         client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=int(client_id))
         dataloader_dict[client_id] = dm.set_dataloader(
@@ -252,9 +274,11 @@ if __name__ == '__main__':
         )
 
     # We perform 5 fold experiments with 5 seeds
-    for fold_idx in range(1, 4):
+    for fold_idx in range(1, 6):
         # number of clients
-        num_of_clients, client_ids = len(dm.client_ids)-2, dm.client_ids[:-2]
+        client_ids = [client_id for client_id in dm.client_ids if client_id not in ['dev', 'test']]
+        num_of_clients = len(client_ids)
+
         # set seeds
         set_seed(8*fold_idx)
         # loss function
@@ -265,7 +289,8 @@ if __name__ == '__main__':
             audio_input_dim=constants.feature_len_dict["mfcc"], 
             video_input_dim=constants.feature_len_dict["mobilenet_v2"],
             d_hid=64,
-            en_att=args.att
+            en_att=args.att,
+            att_name=args.att_name
         )
         global_model = global_model.to(device)
 
@@ -274,7 +299,8 @@ if __name__ == '__main__':
             args, 
             global_model, 
             device=device, 
-            criterion=criterion
+            criterion=criterion,
+            client_ids=client_ids
         )
         server.initialize_log(fold_idx)
         server.sample_clients(
@@ -284,6 +310,20 @@ if __name__ == '__main__':
         
         # set seeds again
         set_seed(8*fold_idx)
+
+        # save json path
+        save_json_path = Path(os.path.realpath(__file__)).parents[2].joinpath(
+            'result',
+            args.fed_alg,
+            args.dataset, 
+            server.model_setting_str
+        )
+        Path.mkdir(save_json_path, parents=True, exist_ok=True)
+        
+        server.save_json_file(
+            dm.label_dist_dict, 
+            save_json_path.joinpath('label.json')
+        )
 
         # Training steps
         for epoch in range(int(args.num_epochs)):
@@ -300,15 +340,38 @@ if __name__ == '__main__':
                     device, 
                     criterion, 
                     dataloader, 
-                    copy.deepcopy(server.global_model)
+                    model=copy.deepcopy(server.global_model),
+                    label_dict=dm.label_dist_dict[client_id],
+                    num_class=constants.num_class_dict[args.dataset]
                 )
-                client.update_weights()
-                # server append updates
-                server.save_train_updates(
-                    copy.deepcopy(client.get_parameters()), 
-                    client.result['sample'], 
-                    client.result
-                )
+
+                # train
+                if args.fed_alg == 'scaffold':
+                    client.set_control(
+                        server_control=copy.deepcopy(server.server_control), 
+                        client_control=copy.deepcopy(server.client_controls[client_id])
+                    )
+                    client.update_weights()
+
+                    # server append updates
+                    server.set_client_control(
+                        client_id, 
+                        copy.deepcopy(client.client_control)
+                    )
+                    server.save_train_updates(
+                        copy.deepcopy(client.get_parameters()), 
+                        client.result['sample'], 
+                        client.result,
+                        delta_control=copy.deepcopy(client.delta_control)
+                    )
+                else:
+                    client.update_weights()
+                    # server append updates
+                    server.save_train_updates(
+                        copy.deepcopy(client.get_parameters()), 
+                        client.result['sample'], 
+                        client.result
+                    )
                 del client
             
             # 2. aggregate, load new global weights
@@ -318,7 +381,7 @@ if __name__ == '__main__':
                 data_split='train',
                 metric='acc'
             )
-            if epoch % args.test_frequency == 0:
+            if epoch % args.test_frequency == 0 or epoch == int(args.num_epochs)-1:
                 with torch.no_grad():
                     # 3. Perform the validation on dev set
                     server.inference(dataloader_dict['dev'])
@@ -341,16 +404,25 @@ if __name__ == '__main__':
             logging.info('---------------------------------------------------------')
 
         # Performance save code
-        row_df = server.summarize_results()
-        save_result_df = pd.concat([save_result_df, row_df])
+        save_result_dict[f'fold{fold_idx}'] = server.summarize_dict_results()
         
+        # output to results
+        server.save_json_file(
+            save_result_dict, 
+            save_json_path.joinpath('result.json')
+        )
+
     # Calculate the average of the 5-fold experiments
-    row_df = pd.DataFrame(index=['average'])
-    for metric in ['acc', 'top5_acc', 'uar']:
-        row_df[metric] = np.mean(save_result_df[metric])
-    save_result_df = pd.concat([save_result_df, row_df])
-    save_result_df.to_csv(str(Path(args.data_dir).joinpath(
-        'log', 
-        args.dataset, 
-        server.model_setting_str).joinpath('result.csv'))
+    save_result_dict['average'] = dict()
+    for metric in ['uar', 'acc', 'top5_acc']:
+        result_list = list()
+        for key in save_result_dict:
+            if metric not in save_result_dict[key]: continue
+            result_list.append(save_result_dict[key][metric])
+        save_result_dict['average'][metric] = np.nanmean(result_list)
+    
+    # dump the dictionary
+    server.save_json_file(
+        save_result_dict, 
+        save_json_path.joinpath('result.json')
     )
