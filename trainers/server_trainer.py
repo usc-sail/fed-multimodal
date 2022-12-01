@@ -49,6 +49,18 @@ class Server(object):
             self.client_controls = {
                 client_id: self.init_control(model) for client_id in self.client_ids
             }
+        elif self.args.fed_alg == 'fed_opt':
+            self.global_optimizer = self._initialize_global_optimizer()
+            
+    def _initialize_global_optimizer(self):
+        # global optimizer
+        global_optimizer = torch.optim.SGD(
+            self.global_model.parameters(),
+            lr=self.args.global_learning_rate,
+            momentum=0.9,
+            weight_decay=0.0
+        )
+        return global_optimizer
 
     def set_client_control(
         self,
@@ -108,10 +120,12 @@ class Server(object):
         model_setting_str += '_hid'+str(self.args.hid_size)
         model_setting_str += '_le'+str(self.args.local_epochs)
         model_setting_str += '_lr' + str(self.args.learning_rate).replace('.', '')
+        if self.args.fed_alg == 'fed_opt': model_setting_str += '_gl'+str(self.args.global_learning_rate).replace('.', '')
         model_setting_str += '_bs'+str(self.args.batch_size)
         model_setting_str += '_sr'+str(self.args.sample_rate).replace('.', '')
         model_setting_str += '_ep'+str(self.args.num_epochs)
         if self.args.att: model_setting_str += f'_{self.args.att_name}'
+        if self.args.fed_alg == 'fed_prox': model_setting_str += '_mu'+str(self.args.mu).replace('.', '')
         
         # FL simulations: missing modality, label noise, missing labels
         if self.args.missing_modality == True:
@@ -133,6 +147,7 @@ class Server(object):
                 replace=False
             )
             self.clients_list.append(idxs_clients)
+        self.num_of_clients = num_of_clients
 
     def initialize_epoch_updates(self, epoch):
         # Initialize updates
@@ -228,16 +243,20 @@ class Server(object):
             acc = np.mean([data['acc'] for data in self.result_dict[self.epoch][data_split]])
             uar = np.mean([data['uar'] for data in self.result_dict[self.epoch][data_split]])
             top5_acc = np.mean([data['top5_acc'] for data in self.result_dict[self.epoch][data_split]])
+            f1 = np.mean([data['f1'] for data in self.result_dict[self.epoch][data_split]])
         else:
             loss = self.result_dict[self.epoch][data_split]['loss']
             acc = self.result_dict[self.epoch][data_split]['acc']
             uar = self.result_dict[self.epoch][data_split]['uar']
             top5_acc = self.result_dict[self.epoch][data_split]['top5_acc']
+            f1 = self.result_dict[self.epoch][data_split]['f1']
 
         # loggin console
         if data_split == 'train': logging.info(f'Current Round: {self.epoch}')
         if metric == 'acc':
             logging.info(f'{data_split} set, Loss: {loss:.3f}, Acc: {acc:.2f}%, Top-5 Acc: {top5_acc:.2f}%')
+        elif metric == 'f1':
+            logging.info(f'{data_split} set, Loss: {loss:.3f}, Macro-F1: {f1:.2f}%, Top-1 Acc: {acc:.2f}%')
         else:
             logging.info(f'{data_split} set, Loss: {loss:.3f}, UAR: {uar:.2f}%, Top-1 Acc: {acc:.2f}%')
 
@@ -245,6 +264,7 @@ class Server(object):
         self.log_writer.add_scalar(f'Loss/{data_split}', loss, self.epoch)
         self.log_writer.add_scalar(f'Acc/{data_split}', acc, self.epoch)
         self.log_writer.add_scalar(f'UAR/{data_split}', uar, self.epoch)
+        self.log_writer.add_scalar(f'F1/{data_split}', f1, self.epoch)
         self.log_writer.add_scalar(f'Top5_Acc/{data_split}', top5_acc, self.epoch)
         
     def log_multilabel_result(
@@ -323,6 +343,7 @@ class Server(object):
         if not self.multilabel:
             best_dev_uar = self.best_dev_dict['uar']
             best_dev_top5_acc = self.best_dev_dict['top5_acc']
+            best_dev_macro_f1 = self.best_dev_dict['f1']
         else:
             best_dev_macro_f1 = self.best_dev_dict['macro_f']
 
@@ -330,6 +351,7 @@ class Server(object):
         best_test_acc = self.best_test_dict['acc']
         if not self.multilabel:
             best_test_uar = self.best_test_dict['uar']
+            best_test_macro_f1 = self.best_test_dict['f1']
             best_test_top5_acc = self.best_test_dict['top5_acc']
         else:
             best_test_macro_f1 = self.best_test_dict['macro_f']
@@ -340,6 +362,9 @@ class Server(object):
             logging.info(f'Best dev Top-1 Acc {best_dev_acc:.2f}%, Top-5 Acc {best_dev_top5_acc:.2f}%')
             logging.info(f'Best test Top-1 Acc {best_test_acc:.2f}%, Top-5 Acc {best_test_top5_acc:.2f}%')
         elif metric == 'macro_f':
+            logging.info(f'Best dev Macro-F1 {best_dev_macro_f1:.2f}%, Top-1 Acc {best_dev_acc:.2f}%')
+            logging.info(f'Best test Macro-F1 {best_test_macro_f1:.2f}%, Top-1 Acc {best_test_acc:.2f}%')
+        elif metric == 'f1':
             logging.info(f'Best dev Macro-F1 {best_dev_macro_f1:.2f}%, Top-1 Acc {best_dev_acc:.2f}%')
             logging.info(f'Best test Macro-F1 {best_test_macro_f1:.2f}%, Top-1 Acc {best_test_acc:.2f}%')
         else:
@@ -362,6 +387,7 @@ class Server(object):
         if not self.multilabel:
             result['top5_acc'] = self.best_test_dict['top5_acc']
             result['uar'] = self.best_test_dict['uar']
+            result['f1'] = self.best_test_dict['f1']
         else:
             result['macro_f'] = self.best_test_dict['macro_f']
         return result
@@ -377,11 +403,20 @@ class Server(object):
         w_avg = copy.deepcopy(self.model_updates[0])
 
         for key in w_avg.keys():
-            w_avg[key] = self.model_updates[0][key]*(self.num_samples_list[0]/total_num_samples)
+            if self.args.fed_alg == 'scaffold':
+                w_avg[key] = torch.div(self.model_updates[0][key], len(self.model_updates))
+            else:
+                w_avg[key] = self.model_updates[0][key]*(self.num_samples_list[0]/total_num_samples)
         for key in w_avg.keys():
             for i in range(1, len(self.model_updates)):
-                w_avg[key] += torch.div(self.model_updates[i][key]*self.num_samples_list[i], total_num_samples)
-        self.global_model.load_state_dict(copy.deepcopy(w_avg))
+                if self.args.fed_alg == 'scaffold':
+                    w_avg[key] += torch.div(self.model_updates[i][key], len(self.model_updates))
+                else:
+                    w_avg[key] += torch.div(self.model_updates[i][key]*self.num_samples_list[i], total_num_samples)
+        if self.args.fed_alg == 'fed_opt':
+            self.update_global(copy.deepcopy(w_avg))
+        else:
+            self.global_model.load_state_dict(copy.deepcopy(w_avg))
 
         # update global control if algorithm is scaffold
         if self.args.fed_alg == 'scaffold':
@@ -394,13 +429,43 @@ class Server(object):
         new_control = copy.deepcopy(self.server_control)
 
         for key in delta_avg.keys():
-            delta_avg[key] = self.delta_controls[0][key]*(self.num_samples_list[0]/total_num_samples)
-
+            delta_avg[key] = torch.div(self.delta_controls[0][key], self.num_of_clients)
+            
         for key in delta_avg.keys():
             for idx in range(1, len(self.delta_controls)):
-                delta_avg[key] += torch.div(self.delta_controls[idx][key]*self.num_samples_list[idx], total_num_samples)
+                delta_avg[key] += torch.div(self.delta_controls[idx][key], self.num_of_clients)
             new_control[key] = new_control[key] - delta_avg[key]
         self.server_control = copy.deepcopy(new_control)
+        
+    def update_global(
+        self, 
+        update_weights
+    ):
+        # zero_grad
+        self.global_optimizer.zero_grad()
+        global_optimizer_state = self.global_optimizer.state_dict()
+
+        # new_model
+        new_model = copy.deepcopy(self.global_model)
+        new_model.load_state_dict(update_weights, strict=True)
+
+        # set global_model gradient
+        with torch.no_grad():
+            for param, new_param in zip(
+                self.global_model.parameters(), new_model.parameters()
+            ):
+                param.grad = (param.data - new_param.data) / self.args.learning_rate
+
+        # replace some non-parameters's state dict
+        state_dict = self.global_model.state_dict()
+        for name in dict(self.global_model.named_parameters()).keys():
+            update_weights[name] = state_dict[name]
+        self.global_model.load_state_dict(update_weights, strict=True)
+
+        # optimization
+        self.global_optimizer = self._initialize_global_optimizer()
+        self.global_optimizer.load_state_dict(global_optimizer_state)
+        self.global_optimizer.step()
 
     def set_save_json_file(
         self, 

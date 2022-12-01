@@ -64,7 +64,7 @@ class ClientFedAvg(object):
         self.eval = EvalMetric(self.multilabel)
         
         # optimizer
-        if self.args.fed_alg == 'fed_avg':
+        if self.args.fed_alg in ['fed_avg', 'fed_opt']:
             optimizer = torch.optim.SGD(
                 self.model.parameters(), 
                 lr=self.args.learning_rate,
@@ -77,7 +77,7 @@ class ClientFedAvg(object):
                 lr=self.args.learning_rate,
                 momentum=0.9,
                 weight_decay=1e-5,
-                mu=1e-4
+                mu=self.args.mu
             )
             
         # last global model

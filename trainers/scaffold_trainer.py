@@ -77,7 +77,8 @@ class ClientScaffold(object):
         optimizer = ScaffoldOptimizer(
             self.model.parameters(), 
             lr=self.args.learning_rate,
-            weight_decay=1e-05
+            weight_decay=1e-05,
+            momentum=0.9
         )
 
         # last global model
