@@ -102,6 +102,13 @@ def parse_args():
         type=float,
         help="learning rate",
     )
+
+    parser.add_argument(
+        '--mu',
+        type=float, 
+        default=0.001,
+        help='Fed prox term'
+    )
     
     parser.add_argument(
         '--sample_rate', 

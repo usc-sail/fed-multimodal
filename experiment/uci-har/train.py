@@ -120,6 +120,13 @@ def parse_args():
         type=str,
         help="optimizer",
     )
+
+    parser.add_argument(
+        '--mu',
+        type=float, 
+        default=0.001,
+        help='Fed prox term'
+    )
     
     parser.add_argument(
         '--fed_alg', 

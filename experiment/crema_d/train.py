@@ -77,6 +77,14 @@ def parse_args():
     )
 
     parser.add_argument(
+        '--mu',
+        type=float, 
+        default=0.001,
+        help='Fed prox term'
+    )
+
+
+    parser.add_argument(
         '--global_learning_rate', 
         default=0.05,
         type=float,

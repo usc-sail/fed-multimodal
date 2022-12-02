@@ -115,6 +115,13 @@ def parse_args():
         type=int,
         help="total training rounds",
     )
+    
+    parser.add_argument(
+        '--mu',
+        type=float, 
+        default=0.001,
+        help='Fed prox term'
+    )
 
     parser.add_argument(
         '--hid_size',
