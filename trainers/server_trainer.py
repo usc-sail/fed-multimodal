@@ -103,6 +103,9 @@ class Server(object):
         if self.args.dataset in ['mit10', 'mit51', 'ucf101', 'crema_d']:
             model_setting_str = f'{self.args.audio_feat}_{self.args.video_feat}'
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
+        elif self.args.dataset in ['hateful_memes']:
+            model_setting_str = f'{self.args.img_feat}_{self.args.text_feat}'
+            model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
         elif self.args.dataset in ['uci-har']:
             model_setting_str = f'{self.args.acc_feat}_{self.args.gyro_feat}'
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
@@ -229,7 +232,10 @@ class Server(object):
                 
         # epoch train results
         if not self.multilabel:
-            self.result = self.eval.classification_summary()
+            if self.args.dataset == "hateful_memes":
+                self.result = self.eval.classification_summary(return_auc=True)
+            else:
+                self.result = self.eval.classification_summary()
         else:
             self.result = self.eval.multilabel_summary()
 
@@ -250,6 +256,8 @@ class Server(object):
             uar = self.result_dict[self.epoch][data_split]['uar']
             top5_acc = self.result_dict[self.epoch][data_split]['top5_acc']
             f1 = self.result_dict[self.epoch][data_split]['f1']
+            if metric == 'auc':
+                auc = self.result_dict[self.epoch][data_split]['auc']
 
         # loggin console
         if data_split == 'train': logging.info(f'Current Round: {self.epoch}')
@@ -257,8 +265,11 @@ class Server(object):
             logging.info(f'{data_split} set, Loss: {loss:.3f}, Acc: {acc:.2f}%, Top-5 Acc: {top5_acc:.2f}%')
         elif metric == 'f1':
             logging.info(f'{data_split} set, Loss: {loss:.3f}, Macro-F1: {f1:.2f}%, Top-1 Acc: {acc:.2f}%')
-        else:
+        elif metric == 'uar':
             logging.info(f'{data_split} set, Loss: {loss:.3f}, UAR: {uar:.2f}%, Top-1 Acc: {acc:.2f}%')
+        
+        if metric == 'auc' and data_split != 'train':
+            logging.info(f'{data_split} set, Loss: {loss:.3f}, AUC: {auc:.2f}%, Top-1 Acc: {acc:.2f}%')
 
         # loggin to folder
         self.log_writer.add_scalar(f'Loss/{data_split}', loss, self.epoch)
@@ -266,6 +277,7 @@ class Server(object):
         self.log_writer.add_scalar(f'UAR/{data_split}', uar, self.epoch)
         self.log_writer.add_scalar(f'F1/{data_split}', f1, self.epoch)
         self.log_writer.add_scalar(f'Top5_Acc/{data_split}', top5_acc, self.epoch)
+        if metric == 'auc' and data_split != 'train': self.log_writer.add_scalar(f'AUC/{data_split}', auc, self.epoch)
         
     def log_multilabel_result(
         self, 
@@ -344,6 +356,7 @@ class Server(object):
             best_dev_uar = self.best_dev_dict['uar']
             best_dev_top5_acc = self.best_dev_dict['top5_acc']
             best_dev_macro_f1 = self.best_dev_dict['f1']
+            if metric == "auc": best_dev_auc = self.best_dev_dict['auc']
         else:
             best_dev_macro_f1 = self.best_dev_dict['macro_f']
 
@@ -353,6 +366,7 @@ class Server(object):
             best_test_uar = self.best_test_dict['uar']
             best_test_macro_f1 = self.best_test_dict['f1']
             best_test_top5_acc = self.best_test_dict['top5_acc']
+            if metric == "auc": best_test_auc = self.best_test_dict['auc']
         else:
             best_test_macro_f1 = self.best_test_dict['macro_f']
             
@@ -367,6 +381,9 @@ class Server(object):
         elif metric == 'f1':
             logging.info(f'Best dev Macro-F1 {best_dev_macro_f1:.2f}%, Top-1 Acc {best_dev_acc:.2f}%')
             logging.info(f'Best test Macro-F1 {best_test_macro_f1:.2f}%, Top-1 Acc {best_test_acc:.2f}%')
+        elif metric == 'auc':
+            logging.info(f'Best dev AUC {best_dev_auc:.2f}%, Top-1 Acc {best_dev_acc:.2f}%')
+            logging.info(f'Best test AUC {best_test_auc:.2f}%, Top-1 Acc {best_test_acc:.2f}%')
         else:
             logging.info(f'Best dev UAR {best_dev_uar:.2f}%, Top-1 Acc {best_dev_acc:.2f}%')
             logging.info(f'Best test UAR {best_test_uar:.2f}%, Top-1 Acc {best_test_acc:.2f}%')
@@ -388,6 +405,7 @@ class Server(object):
             result['top5_acc'] = self.best_test_dict['top5_acc']
             result['uar'] = self.best_test_dict['uar']
             result['f1'] = self.best_test_dict['f1']
+            if "auc" in self.best_test_dict: result['auc'] = self.best_test_dict['auc']
         else:
             result['macro_f'] = self.best_test_dict['macro_f']
         return result

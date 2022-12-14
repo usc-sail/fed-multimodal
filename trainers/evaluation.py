@@ -9,8 +9,7 @@ from torch.utils import data
 from sklearn.metrics import f1_score
 from sklearn.metrics import confusion_matrix
 from torch.utils.data import DataLoader, Dataset
-from sklearn.metrics import accuracy_score, recall_score
-
+from sklearn.metrics import accuracy_score, recall_score, roc_auc_score
 warnings.filterwarnings('ignore')
 
 
@@ -49,7 +48,10 @@ class EvalMetric(object):
             self.truth_list.append(labels.detach().cpu().numpy()[idx])
         self.loss_list.append(loss.item())
         
-    def classification_summary(self):
+    def classification_summary(
+        self, 
+        return_auc: bool=False
+    ):
         result_dict = dict()
         result_dict['acc'] = accuracy_score(self.truth_list, self.pred_list)*100
         result_dict['uar'] = recall_score(self.truth_list, self.pred_list, average="macro")*100
@@ -58,6 +60,7 @@ class EvalMetric(object):
         result_dict["loss"] = np.mean(self.loss_list)
         result_dict["sample"] = len(self.truth_list)
         result_dict['f1'] = f1_score(self.truth_list, self.pred_list, average='macro')*100
+        if return_auc: result_dict['auc'] = roc_auc_score(self.truth_list, self.pred_list)*100
         return result_dict
 
     def multilabel_summary(self):
