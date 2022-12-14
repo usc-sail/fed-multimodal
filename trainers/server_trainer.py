@@ -420,6 +420,7 @@ class Server(object):
         total_num_samples = np.sum(self.num_samples_list)
         w_avg = copy.deepcopy(self.model_updates[0])
 
+        # calculate weighted updates
         for key in w_avg.keys():
             if self.args.fed_alg == 'scaffold':
                 w_avg[key] = torch.div(self.model_updates[0][key], len(self.model_updates))
@@ -431,6 +432,8 @@ class Server(object):
                     w_avg[key] += torch.div(self.model_updates[i][key], len(self.model_updates))
                 else:
                     w_avg[key] += torch.div(self.model_updates[i][key]*self.num_samples_list[i], total_num_samples)
+        
+        # server optimization or just load with weights
         if self.args.fed_alg == 'fed_opt':
             self.update_global(copy.deepcopy(w_avg))
         else:
