@@ -103,6 +103,9 @@ class DataloadManager():
         # Initialize video feature paths
         if self.args.dataset in ['ucf101', 'mit10', 'mit51', 'mit101', 'crema_d']:
             self.get_video_feat_path()
+        if self.args.dataset in ['hateful_memes', 'crisis-mmd']:
+            self.get_image_feat_path()
+            self.get_text_feat_path()
         # Initialize audio feature paths
         if self.args.dataset in ['ucf101', 'mit10', 'mit51', 'mit101', 'meld', 'crema_d']:
             self.get_audio_feat_path()
@@ -150,6 +153,18 @@ class DataloadManager():
             self.args.dataset
         )
         return Path(self.video_feat_path)
+    
+    def get_image_feat_path(self):
+        """
+        Load image feature path.
+        """
+        self.img_feat_path = Path(self.args.data_dir).joinpath(
+            'feature', 
+            'img', 
+            self.args.img_feat, 
+            self.args.dataset
+        )
+        return Path(self.img_feat_path)
 
     def get_text_feat_path(self):
         """
@@ -208,6 +223,11 @@ class DataloadManager():
         if self.args.dataset in ["mit10", "mit51"]:
             alpha_str = str(self.args.alpha).replace('.', '')
             data_path = self.video_feat_path.joinpath(
+                f'alpha{alpha_str}'
+            )
+        elif self.args.dataset in ["hateful_memes", "crisis-mmd"]:
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.img_feat_path.joinpath(
                 f'alpha{alpha_str}'
             )
         elif self.args.dataset in ["crema_d"]:
@@ -307,6 +327,27 @@ class DataloadManager():
             data_dict = pickle.load(f)
         return data_dict
     
+    def load_img_feat(
+            self, 
+            client_id: str, 
+            fold_idx: int=1
+        ) -> dict:
+        """
+        Load image feature data for image applications.
+        :param client_id: client id
+        :param fold_idx: fold index
+        :return: data_dict: [key, path, label, feature_array]
+        """
+        if self.args.dataset in ["hateful_memes", "crisis-mmd"]:
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.img_feat_path.joinpath(
+                f'alpha{alpha_str}', 
+                f'{client_id}.pkl'
+            )
+        with open(str(data_path), "rb") as f: 
+            data_dict = pickle.load(f)
+        return data_dict
+    
     def load_acc_feat(
             self, 
             client_id: str, 
@@ -391,6 +432,13 @@ class DataloadManager():
             data_path = self.text_feat_path.joinpath(
                 f'{client_id}.pkl'
             )
+        elif self.args.dataset in ["hateful_memes", "crisis-mmd"]:
+            alpha_str = str(self.args.alpha).replace('.', '')
+            data_path = self.text_feat_path.joinpath(
+                f'alpha{alpha_str}', 
+                f'{client_id}.pkl'
+            )
+            
         with open(str(data_path), "rb") as f: 
             data_dict = pickle.load(f)
         return data_dict
