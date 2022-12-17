@@ -44,7 +44,7 @@ class simulation_manager():
                 self.args.dataset, 
                 f'partition.{ext}'
             )
-        elif self.args.dataset == "crema_d":
+        elif self.args.dataset in ["crema_d", "ku-har"]:
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 
                 self.args.dataset,
@@ -150,7 +150,7 @@ class simulation_manager():
         # 1. simulate modality missing
         if self.args.missing_modality == True:
             modality_a_missing = int(self.simulate_missing_modality(seed=seed))
-            modality_b_missing = int(self.simulate_missing_modality(seed=seed))
+            modality_b_missing = int(self.simulate_missing_modality(seed=seed*2))
         else:
             modality_a_missing = 0
             modality_b_missing = 0
