@@ -24,6 +24,8 @@ num_class_dict = {
     'ptb-xl':               5,
     'extrasensory':         4,
     'ku-har':               8,
+    'hateful_memes':        2,
+    'crisis-mmd':           8,
     'extrasensory_watch':   6
 }
 
