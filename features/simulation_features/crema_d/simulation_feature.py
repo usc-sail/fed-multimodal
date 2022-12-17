@@ -8,8 +8,6 @@ import random
 import pickle
 import os, sys
 import argparse
-import opensmile
-import torchaudio
 import numpy as np
 import os.path as osp
 
@@ -23,6 +21,13 @@ sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[3]), '
 import constants
 from simulation_manager import simulation_manager
 
+# Define logging console
+import logging
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
+    level=logging.INFO, 
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate Simulation Features')
@@ -109,6 +114,12 @@ if __name__ == '__main__':
     args = parse_args()
     # initialize simulation manager
     sm = simulation_manager(args)
+
+    # logging information
+    if args.missing_modality:
+        logging.info(f'simulation missing_modality, missing rate {args.missing_modailty_rate*100}%')
+    if args.label_nosiy:
+        logging.info(f'simulation label_nosiy, label noise rate {args.label_nosiy_level*100}%')
     
     for fold_idx in range(1, 6):
         # define output path
