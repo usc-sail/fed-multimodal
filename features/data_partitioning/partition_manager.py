@@ -125,8 +125,22 @@ class partition_manager():
                 "H": 2, 
                 "N": 3
             }
+        elif self.args.dataset == "crisis-mmd":
+            self.label_dict = {
+                'not_humanitarian':                         0, 
+                'infrastructure_and_utility_damage':        1,
+                'vehicle_damage':                           2, 
+                'rescue_volunteering_or_donation_effort':   3,
+                'other_relevant_information':               4, 
+                'affected_individuals':                     5,
+                'injured_or_dead_people':                   6, 
+                'missing_or_found_people':                  7
+            }
+
         elif self.args.dataset == 'uci-har':
             self.label_dict = {k: i for i, k in enumerate(np.arange(6))}
+        elif self.args.dataset == 'hateful_memes':
+            self.label_dict = {k: i for i, k in enumerate(np.arange(6))}    
         
     def split_train_dev(
         self, 
@@ -146,20 +160,23 @@ class partition_manager():
     def direchlet_partition(
         self, 
         file_label_list: list,
-        seed: int=8
+        seed: int=8,
+        min_sample_size: int=5
     ) -> (list):
         
         # cut the data using dirichlet
         min_size = 0
         K, N = len(np.unique(file_label_list)), len(file_label_list)
-        # at least we train 1 full batch
-        min_sample_size = 5
+        # seed
         np.random.seed(seed)
         while min_size < min_sample_size:
             file_idx_clients = [[] for _ in range(self.args.num_clients)]
             for k in range(K):
                 idx_k = np.where(np.array(file_label_list) == k)[0]
                 np.random.shuffle(idx_k)
+                # if self.args.dataset == "hateful_memes" and k == 0:
+                #    proportions = np.random.dirichlet(np.repeat(1.0, self.args.num_clients))
+                # else:
                 proportions = np.random.dirichlet(np.repeat(self.args.alpha, self.args.num_clients))
                 # Balance
                 proportions = np.array([p*(len(idx_j)<N/self.args.num_clients) for p, idx_j in zip(proportions, file_idx_clients)])
