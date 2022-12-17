@@ -132,7 +132,7 @@ def parse_args():
 
     parser.add_argument(
         '--test_frequency', 
-        default=2,
+        default=5,
         type=str,
         help="perform test frequency",
     )
@@ -408,7 +408,7 @@ if __name__ == '__main__':
                 data_split='train', 
                 metric='acc'
             )
-            if epoch % args.test_frequency == 0:
+            if epoch % args.test_frequency == 0 or epoch == int(args.num_epochs)-1:
                 with torch.no_grad():
                     # 3. Perform the validation on dev set
                     server.inference(dataloader_dict['dev'])

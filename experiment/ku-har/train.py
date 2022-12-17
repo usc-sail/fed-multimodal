@@ -256,7 +256,7 @@ if __name__ == '__main__':
         dm = DataloadManager(args)
         dm.get_simulation_setting()
         # load simulation feature
-        dm.load_sim_dict()
+        dm.load_sim_dict(fold_idx=fold_idx)
         # load client ids
         dm.get_client_ids(fold_idx=fold_idx)
         

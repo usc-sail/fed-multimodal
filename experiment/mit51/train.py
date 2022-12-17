@@ -90,8 +90,8 @@ def parse_args():
 
     parser.add_argument(
         '--test_frequency', 
-        default=10,
-        type=str,
+        default=5,
+        type=int,
         help="perform test frequency",
     )
     
@@ -101,7 +101,21 @@ def parse_args():
         type=int,
         help="local epochs",
     )
+
+    parser.add_argument(
+        '--mu',
+        type=float, 
+        default=0.001,
+        help='Fed prox term'
+    )
     
+    parser.add_argument(
+        '--global_learning_rate', 
+        default=0.05,
+        type=float,
+        help="learning rate",
+    )
+
     parser.add_argument(
         '--optimizer', 
         default='sgd',
@@ -201,6 +215,13 @@ def parse_args():
     )
     
     parser.add_argument(
+        '--hid_size',
+        type=int, 
+        default=64,
+        help='RNN hidden size dim'
+    )
+
+    parser.add_argument(
         "--en_label_nosiy",
         dest='label_nosiy',
         action='store_true',
@@ -233,11 +254,11 @@ if __name__ == '__main__':
     dm.get_simulation_setting(alpha=args.alpha)
     
     # find device
-    device = torch.device("cuda:1") if torch.cuda.is_available() else "cpu"
+    device = torch.device("cuda:0") if torch.cuda.is_available() else "cpu"
     if torch.cuda.is_available(): print('GPU available, use GPU')
     save_result_dict = dict()
 
-    if args.fed_alg in ['fed_avg', 'fed_prox']:
+    if args.fed_alg in ['fed_avg', 'fed_prox', 'fed_opt']:
         Client = ClientFedAvg
     elif args.fed_alg in ['scaffold']:
         Client = ClientScaffold
@@ -263,14 +284,14 @@ if __name__ == '__main__':
             client_id
         )
         shuffle = False if client_id in ['dev', 'test'] else True
-        client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=int(client_id))
+        client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=client_id)
         dataloader_dict[client_id] = dm.set_dataloader(
             audio_dict, 
             video_dict, 
             shuffle=shuffle,
             client_sim_dict=client_sim_dict,
             default_feat_shape_a=np.array([150, constants.feature_len_dict["mfcc"]]),
-            default_feat_shape_b=np.array([3, constants.feature_len_dict["mobilenet_v2"]])
+            default_feat_shape_b=np.array([8, constants.feature_len_dict["mobilenet_v2"]])
         )
 
     # We perform 5 fold experiments with 5 seeds
@@ -288,7 +309,7 @@ if __name__ == '__main__':
             num_classes=constants.num_class_dict[args.dataset],
             audio_input_dim=constants.feature_len_dict["mfcc"], 
             video_input_dim=constants.feature_len_dict["mobilenet_v2"],
-            d_hid=64,
+            d_hid=args.hid_size,
             en_att=args.att,
             att_name=args.att_name
         )
@@ -307,6 +328,7 @@ if __name__ == '__main__':
             num_of_clients, 
             sample_rate=args.sample_rate
         )
+        server.get_num_params()
         
         # set seeds again
         set_seed(8*fold_idx)
@@ -330,10 +352,14 @@ if __name__ == '__main__':
             # define list varibles that saves the weights, loss, num_sample, etc.
             server.initialize_epoch_updates(epoch)
             # 1. Local training, return weights in fed_avg, return gradients in fed_sgd
+            skip_client_ids = list()
             for idx in server.clients_list[epoch]:
                 # Local training
                 client_id = client_ids[idx]
                 dataloader = dataloader_dict[client_id]
+                if dataloader is None:
+                    skip_client_ids.append(client_id)
+                    continue
                 # initialize client object
                 client = Client(
                     args, 
@@ -374,7 +400,11 @@ if __name__ == '__main__':
                     )
                 del client
             
+            # logging skip client
+            logging.info(f'Client Round: {epoch}, Skip client {skip_client_ids}')
+            
             # 2. aggregate, load new global weights
+            if len(server.num_samples_list) == 0: continue
             server.average_weights()
             logging.info('---------------------------------------------------------')
             server.log_classification_result(

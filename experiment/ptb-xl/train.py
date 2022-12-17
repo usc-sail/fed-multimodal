@@ -112,6 +112,13 @@ def parse_args():
     )
     
     parser.add_argument(
+        '--mu',
+        type=float, 
+        default=0.001,
+        help='Fed prox term'
+    )
+    
+    parser.add_argument(
         '--batch_size',
         default=64,
         type=int,
