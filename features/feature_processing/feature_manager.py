@@ -109,6 +109,23 @@ class feature_manager():
         if max_len != -1: features = features[:max_len]
         return features
     
+    def extract_img_features(
+        self, 
+        img_path: str
+    ) -> (np.array):
+        """
+        Extract the framewise feature from image
+        :param img_path: image path
+        :return: return features
+        """
+        input_image = Image.open(img_path).convert('RGB')
+        input_tensor = self.img_transform(input_image)
+        
+        with torch.no_grad():
+            input_data = input_tensor.to(self.device).unsqueeze(dim=0)
+            features = self.model(input_data).detach().cpu().numpy()
+        return features
+    
     def extract_frame_features(
         self, 
         video_path: str,
@@ -197,7 +214,7 @@ class feature_manager():
                 f'fold{fold_idx}', 
                 f'partition.{file_ext}'
             )
-        elif self.args.dataset in ["mit10", "mit51", "uci-har"]:
+        elif self.args.dataset in ["mit10", "mit51", "uci-har", "hateful_memes", "crisis-mmd"]:
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 
                 self.args.dataset, 
