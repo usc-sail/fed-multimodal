@@ -8,9 +8,7 @@ import pandas as pd
 import os.path as osp
 from tqdm import tqdm
 from pathlib import Path
-from sklearn.model_selection import KFold
-from tqdm import tqdm 
-import re
+
 
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[1])))
 from partition_manager import partition_manager
@@ -29,23 +27,19 @@ def data_partition(args: dict):
     pm = partition_manager(args)
     
     # Fetch all labels
-    pm.fetch_label_dict() #obtaining the label dictionary 
+    pm.fetch_label_dict() # obtaining the label dictionary 
 
-
-    #get the raw csv data 
-
-    csv_data=pd.read_csv(Path(args.raw_data_dir).joinpath("crisis_mmd_humanitarian.csv"))
-
-    train_csv_data=csv_data[csv_data['split']=='train']
-    val_csv_data=csv_data[csv_data['split']=='val']
-    test_csv_data=csv_data[csv_data['split']=='test']
+    # get the raw csv data 
+    train_csv_data = pd.read_csv(Path(args.raw_data_dir).joinpath("crisismmd_datasplit_all", "task_humanitarian_text_img_train.tsv"), sep='\t')
+    val_csv_data = pd.read_csv(Path(args.raw_data_dir).joinpath("crisismmd_datasplit_all", "task_humanitarian_text_img_dev.tsv"), sep='\t')
+    test_csv_data = pd.read_csv(Path(args.raw_data_dir).joinpath("crisismmd_datasplit_all", "task_humanitarian_text_img_test.tsv"), sep='\t')
 
     train_data_dict, dev_data_dict, test_data_dict = dict(), dict(), dict()
-
-    #train dict generate from csv data
+    
+    # train dict generate from csv data
     for i in tqdm(np.arange(train_csv_data.shape[0])):
-        train_text=remove_url(train_csv_data['tweet_text'].iloc[i]).strip()
-        print(train_text)
+        train_text = remove_url(train_csv_data['tweet_text'].iloc[i]).strip()
+        # print(train_text)
         train_data_dict[train_csv_data['image_id'].iloc[i]] = [
             train_csv_data['image_id'].iloc[i],
             str(Path(args.raw_data_dir).joinpath(train_csv_data['image'].iloc[i])),
@@ -53,7 +47,7 @@ def data_partition(args: dict):
             train_text
         ]
         
-    #val dict generate from csv data
+    # val dict generate from csv data
     for i in tqdm(np.arange(val_csv_data.shape[0])):
         val_text=remove_url(val_csv_data['tweet_text'].iloc[i]).strip()
         dev_data_dict[val_csv_data['image_id'].iloc[i]] = [
@@ -81,7 +75,8 @@ def data_partition(args: dict):
     # Perform split
     # file_idx_clients => [client0_file_idx: array, client1_file_idx: array, ...]
     file_idx_clients = pm.direchlet_partition(
-        file_label_list
+        file_label_list,
+        min_sample_size=1
     )
 
     # Save the partition
@@ -110,14 +105,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--raw_data_dir",
         type=str,
-        default="/data/digbose92/missing_modality_experiments/Crisis-MMD/CrisisMMD_v2.0",
+        default="/media/data/public-data/ImageText/CrisisMMD_v2.0",
         help="Raw data path of Moments In Time dataset",
     )
     
     parser.add_argument(
         "--output_partition_path",
         type=str,
-        default="/data/digbose92/federated_learning/partition",
+        default="/media/data/projects/speech-privacy/fed-multimodal/partition",
         help="Output path of speech_commands data set",
     )
 
@@ -138,9 +133,10 @@ if __name__ == "__main__":
     parser.add_argument(
         '--num_clients', 
         type=int, 
-        default=40, 
+        default=200, 
         help='Number of clients to cut from whole data.'
     )
+
     parser.add_argument(
         "--dataset",
         type=str, 
