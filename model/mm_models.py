@@ -194,8 +194,6 @@ class MMActionClassifier(nn.Module):
             # 4. Average pooling
             x_audio = torch.mean(x_audio, axis=1)
             x_video = torch.mean(x_video, axis=1)
-            # x_audio = self.audio_proj(x_audio)
-            # x_video = self.video_proj(x_video)
             x_mm = torch.concat((x_audio, x_video), dim=1)
 
         # 5. Projection with no attention
@@ -361,8 +359,6 @@ class SERClassifier(nn.Module):
             # 4. Average pooling Projection
             x_audio = torch.mean(x_audio, axis=1)
             x_text = torch.mean(x_text, axis=1)
-            # x_audio = self.audio_proj(x_audio)
-            # x_text = self.text_proj(x_text)
             x_mm = torch.concat((x_audio, x_text), dim=1)
         
         # 5. Projection
@@ -457,6 +453,10 @@ class ImageTextClassifier(nn.Module):
                 # get attention output
                 x_mm = torch.concat((x_img.unsqueeze(dim=1), x_text), dim=1)
                 x_mm = self.fuse_att(x_mm, len_i, len_t, 1)
+        else:
+            # 4. Average pooling
+            x_mm = torch.concat((x_img.unsqueeze(dim=1), x_text), dim=1)
+            
         # 4. MM embedding and predict
         preds = self.classifier(x_mm)
         return preds, x_mm
@@ -599,8 +599,6 @@ class HARClassifier(nn.Module):
             # 4. Average pooling
             x_acc = torch.mean(x_acc, axis=1)
             x_gyro = torch.mean(x_gyro, axis=1)
-            # x_acc = self.acc_proj(x_acc)
-            # x_gyro = self.gyro_proj(x_gyro)
             x_mm = torch.concat((x_acc, x_gyro), dim=1)
 
         # 5. Projection
@@ -721,9 +719,6 @@ class ECGClassifier(nn.Module):
             # 4. Average pooling
             x_i_to_avf = torch.mean(x_i_to_avf, axis=1)
             x_v1_to_v6 = torch.mean(x_v1_to_v6, axis=1)
-            # 5. Projection
-            # x_i_to_avf = self.i_to_avf_proj(x_i_to_avf)
-            # x_v1_to_v6 = self.v1_to_v6_proj(x_v1_to_v6)
             # 6. MM embedding and predict
             x_mm = torch.concat((x_i_to_avf, x_v1_to_v6), dim=1)
         preds = self.classifier(x_mm)
