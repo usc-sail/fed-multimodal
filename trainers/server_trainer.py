@@ -35,9 +35,9 @@ class Server(object):
         client_ids
     ):
         self.args = args
-        self.global_model = model
         self.device = device
         self.result_dict = dict()
+        self.global_model = model
         self.criterion = criterion
         self.model_setting_str = self.get_model_setting()
         self.client_ids = client_ids
@@ -100,23 +100,52 @@ class Server(object):
         
     def get_model_setting(self):
         # Return model setting
+        # Audio video pairs
         if self.args.dataset in ['mit10', 'mit51', 'ucf101', 'crema_d']:
-            model_setting_str = f'{self.args.audio_feat}_{self.args.video_feat}'
+            if self.args.modality == "multimodal":
+                model_setting_str = f'{self.args.audio_feat}_{self.args.video_feat}'
+            elif self.args.modality == "audio":
+                model_setting_str = f'{self.args.audio_feat}'
+            elif self.args.modality == "video":
+                model_setting_str = f'{self.args.video_feat}'
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
+        # Image text pairs
         elif self.args.dataset in ['hateful_memes', 'crisis-mmd']:
-            model_setting_str = f'{self.args.img_feat}_{self.args.text_feat}'
+            if self.args.modality == "multimodal":
+                model_setting_str = f'{self.args.img_feat}_{self.args.text_feat}'
+            elif self.args.modality == "audio":
+                model_setting_str = f'{self.args.img_feat}'
+            elif self.args.modality == "video":
+                model_setting_str = f'{self.args.text_feat}'
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
+        # Acc gyro pairs
         elif self.args.dataset in ['uci-har']:
-            model_setting_str = f'{self.args.acc_feat}_{self.args.gyro_feat}'
+            if self.args.modality == "multimodal":
+                model_setting_str = f'{self.args.acc_feat}_{self.args.gyro_feat}'
+            elif self.args.modality == "acc":
+                model_setting_str = f'{self.args.acc_feat}'
+            elif self.args.modality == "gyro":
+                model_setting_str = f'{self.args.gyro_feat}'
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
         elif self.args.dataset in ['extrasensory', 'ku-har']:
             model_setting_str = f'{self.args.acc_feat}_{self.args.gyro_feat}'
         elif self.args.dataset in ['extrasensory_watch']:
             model_setting_str = f'{self.args.acc_feat}_{self.args.watch_feat}'
         elif self.args.dataset in ['ptb-xl']:
-            model_setting_str = 'i_to_avf_v1_to_v6'
+            if self.args.modality == "multimodal":
+                model_setting_str = 'i_to_avf_v1_to_v6'
+            elif self.args.modality == "i_to_avf":
+                model_setting_str = 'i_to_avf'
+            elif self.args.modality == "v1_to_v6":
+                model_setting_str = 'v1_to_v6'
+        # Audio text pairs
         elif self.args.dataset in ['meld']:
-            model_setting_str = f'{self.args.audio_feat}_{self.args.text_feat}'
+            if self.args.modality == "multimodal":
+                model_setting_str = f'{self.args.audio_feat}_{self.args.text_feat}'
+            elif self.args.modality == "audio":
+                model_setting_str = f'{self.args.audio_feat}'
+            elif self.args.modality == "text":
+                model_setting_str = f'{self.args.text_feat}'
         else:
             raise ValueError(f'Data set not support {self.args.dataset}')
         # training settings: local epochs, learning rate, batch size, client sample rate

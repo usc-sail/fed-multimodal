@@ -230,6 +230,13 @@ def parse_args():
         default="ku-har",
         help='data set name'
     )
+
+    parser.add_argument(
+        '--modality', 
+        type=str, 
+        default='multimodal',
+        help='modality type'
+    )
     args = parser.parse_args()
     return args
 

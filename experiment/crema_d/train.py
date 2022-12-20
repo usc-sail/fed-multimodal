@@ -237,6 +237,13 @@ def parse_args():
         default='uar',
         help='evaluation metric: uar/acc/f1'
     )
+
+    parser.add_argument(
+        '--modality', 
+        type=str, 
+        default='multimodal',
+        help='modality type'
+    )
     
     parser.add_argument(
         "--dataset", 

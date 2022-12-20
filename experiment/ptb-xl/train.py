@@ -215,6 +215,13 @@ def parse_args():
         default=0.1,
         help='nosiy level for labels; 0.9 means 90% wrong'
     )
+
+    parser.add_argument(
+        '--modality', 
+        type=str, 
+        default='multimodal',
+        help='modality type'
+    )
     
     parser.add_argument(
         "--dataset", 

@@ -231,6 +231,13 @@ def parse_args():
     )
     
     parser.add_argument(
+        '--modality', 
+        type=str, 
+        default='multimodal',
+        help='modality type'
+    )
+    
+    parser.add_argument(
         "--dataset", 
         type=str, 
         default="meld",
