@@ -88,17 +88,27 @@ class ClientFedAvg(object):
                 if self.args.dataset == 'extrasensory' and batch_idx > 20: continue
                 self.model.zero_grad()
                 optimizer.zero_grad()
-                x_a, x_b, l_a, l_b, y = batch_data
-                x_a, x_b, y = x_a.to(self.device), x_b.to(self.device), y.to(self.device)
-                l_a, l_b = l_a.to(self.device), l_b.to(self.device)
-                
-                # forward
-                outputs, _ = self.model(
-                    x_a.float(), 
-                    x_b.float(), 
-                    l_a, 
-                    l_b
-                )
+                if self.args.modality == "multimodal":
+                    x_a, x_b, l_a, l_b, y = batch_data
+                    x_a, x_b, y = x_a.to(self.device), x_b.to(self.device), y.to(self.device)
+                    l_a, l_b = l_a.to(self.device), l_b.to(self.device)
+                    
+                    # forward
+                    outputs, _ = self.model(
+                        x_a.float(), 
+                        x_b.float(), 
+                        l_a, 
+                        l_b
+                    )
+                else:
+                    x, l, y = batch_data
+                    x, l, y = x.to(self.device), l.to(self.device), y.to(self.device)
+                    
+                    # forward
+                    outputs, _ = self.model(
+                        x.float(), 
+                        l
+                    )
                 
                 if not self.multilabel: 
                     outputs = torch.log_softmax(outputs, dim=1)

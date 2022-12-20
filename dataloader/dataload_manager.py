@@ -42,6 +42,23 @@ def collate_mm_fn_padd(batch):
     ys = torch.stack(ys, dim=0)
     return x_a, x_b, len_a, len_b, ys
 
+def collate_unimodal_fn_padd(batch):
+    # find longest sequence
+    if batch[0][0] is not None: max_a_len = max(map(lambda x: x[0].shape[0], batch))
+    
+    # pad according to max_len
+    x_a, len_a, ys = list(), list(), list()
+    for idx in range(len(batch)):
+        x_a.append(pad_tensor(batch[idx][0], pad=max_a_len))
+        len_a.append(torch.tensor(batch[idx][1]))
+        ys.append(batch[idx][-1])
+    
+    # stack all
+    x_a = torch.stack(x_a, dim=0)
+    len_a = torch.stack(len_a, dim=0)
+    ys = torch.stack(ys, dim=0)
+    return x_a, len_a, ys
+
 
 class MMDatasetGenerator(Dataset):
     def __init__(
@@ -89,8 +106,33 @@ class MMDatasetGenerator(Dataset):
         else: 
             data_b = torch.tensor(np.zeros(self.default_feat_shape_b))
             len_b = 0
-
         return data_a, data_b, len_a, len_b, label
+
+
+
+class UniModalDatasetGenerator(Dataset):
+    def __init__(
+        self, 
+        modalityA,
+        data_len: int, 
+        simulate_feat=None,
+        dataset: str=''
+    ):
+        self.dataset = dataset
+        self.data_len = data_len
+        self.modalityA = modalityA
+        self.simulate_feat = simulate_feat
+        
+    def __len__(self):
+        return self.data_len
+
+    def __getitem__(self, item):
+        # read modality
+        data_a = self.modalityA[item][-1]
+        label = torch.tensor(self.modalityA[item][-2])
+        data_a = torch.tensor(data_a)
+        len_a = len(data_a)
+        return data_a, len_a, label
 
 
 class DataloadManager():
@@ -550,6 +592,60 @@ class DataloadManager():
                 collate_fn=collate_mm_fn_padd
             )
         return dataloader
+
+    def set_unimodal_dataloader(
+            self, 
+            data_a: dict,
+            client_sim_dict: dict=None,
+            shuffle: bool=False
+        ) -> (DataLoader):
+        """
+        Set dataloader for training/dev/test.
+        :param data_a: modality A data
+        :param shuffle: shuffle flag for dataloader, True for training; False for dev and test
+        :return: dataloader: torch dataloader
+        """
+        # modify data based on simulation
+        if client_sim_dict is not None:
+            for idx in range(len(client_sim_dict)):
+                # read simulate feature
+                sim_data = client_sim_dict[idx][-1]
+                # pdb.set_trace()
+                # read modality A
+                if sim_data[0] == 1: data_a[idx][-1] = None
+                # read modality B
+                if sim_data[1] == 1: data_b[idx][-1] = None
+                # label noise
+                data_a[idx][-2] = sim_data[2]
+            
+            # return None when both modalities are missing
+            if sim_data[0] == 1 and sim_data[1] == 1:
+                return None
+                
+        data = UniModalDatasetGenerator(
+            data_a, 
+            len(data_a),
+            self.args.dataset
+        )
+        if shuffle:
+            # we use args input batch size for train, typically set as 16 in FL setup
+            dataloader = DataLoader(
+                data, 
+                batch_size=int(self.args.batch_size), 
+                num_workers=0, 
+                shuffle=shuffle, 
+                collate_fn=collate_unimodal_fn_padd
+            )
+        else:
+            # we use a larger batch size for validation and testing
+            dataloader = DataLoader(
+                data, 
+                batch_size=64, 
+                num_workers=0, 
+                shuffle=shuffle, 
+                collate_fn=collate_unimodal_fn_padd
+            )
+        return dataloader
     
     def load_sim_dict(
         self, 
@@ -572,7 +668,7 @@ class DataloadManager():
                 f'fold{fold_idx}', 
                 f'{self.setting_str}.{ext}'
             )
-        elif self.args.dataset in ["mit10", "mit51", "meld", "uci-har", "ptb-xl"]:
+        elif self.args.dataset in ["mit10", "mit51", "meld", "uci-har", "ptb-xl", "crisis-mmd", "hateful_memes"]:
             data_path = Path(self.args.data_dir).joinpath(
                 'simulation_feature',
                 self.args.dataset,

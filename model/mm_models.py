@@ -419,6 +419,14 @@ class ImageTextClassifier(nn.Module):
                 nn.Dropout(self.dropout_p),
                 nn.Linear(64, num_classes)
             )
+        else:
+            # classifier head
+            self.classifier = nn.Sequential(
+                nn.Linear(d_hid*2, 64),
+                nn.ReLU(),
+                nn.Dropout(self.dropout_p),
+                nn.Linear(64, num_classes)
+            )
             
         self.init_weight()
         
@@ -455,7 +463,8 @@ class ImageTextClassifier(nn.Module):
                 x_mm = self.fuse_att(x_mm, len_i, len_t, 1)
         else:
             # 4. Average pooling
-            x_mm = torch.concat((x_img.unsqueeze(dim=1), x_text), dim=1)
+            x_text = torch.mean(x_text, axis=1)
+            x_mm = torch.concat((x_img, x_text), dim=1)
             
         # 4. MM embedding and predict
         preds = self.classifier(x_mm)

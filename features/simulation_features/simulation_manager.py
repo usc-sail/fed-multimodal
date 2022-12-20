@@ -31,7 +31,7 @@ class simulation_manager():
                 f'fold{fold_idx}', 
                 f'partition_alpha{alpha_str}.{ext}'
             )
-        elif self.args.dataset in ["mit10", "mit51", "uci-har"]:
+        elif self.args.dataset in ["mit10", "mit51", "uci-har", "crisis-mmd", "hateful_memes"]:
             alpha_str = str(alpha).replace('.', '')
             partition_path = Path(self.args.output_dir).joinpath(
                 "partition", 
