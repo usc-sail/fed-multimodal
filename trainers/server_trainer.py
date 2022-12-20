@@ -103,7 +103,7 @@ class Server(object):
         if self.args.dataset in ['mit10', 'mit51', 'ucf101', 'crema_d']:
             model_setting_str = f'{self.args.audio_feat}_{self.args.video_feat}'
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
-        elif self.args.dataset in ['hateful_memes']:
+        elif self.args.dataset in ['hateful_memes', 'crisis-mmd']:
             model_setting_str = f'{self.args.img_feat}_{self.args.text_feat}'
             model_setting_str += '_alpha'+str(self.args.alpha).replace('.', '')
         elif self.args.dataset in ['uci-har']:
