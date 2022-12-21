@@ -26,7 +26,8 @@ class MMActionClassifier(nn.Module):
         d_hid: int=128,         # Hidden Layer size
         n_filters: int=32,      # number of filters
         en_att: bool=False,     # Enable self attention or not
-        att_name: str=''        # Attention Name
+        att_name: str='',       # Attention Name
+        d_head: int=6           # Head dim
     ):
         super(MMActionClassifier, self).__init__()
         self.dropout_p = 0.1
@@ -90,7 +91,8 @@ class MMActionClassifier(nn.Module):
             )
         elif self.att_name == "fuse_base":
             self.fuse_att = FuseBaseSelfAttention(
-                d_hid=d_hid
+                d_hid=d_hid,
+                d_head=d_head
             )
         elif self.att_name == "hirarchical":
             self.att = HirarchicalAttention(
@@ -100,7 +102,7 @@ class MMActionClassifier(nn.Module):
         # classifier head
         if self.en_att and self.att_name == "fuse_base":
             self.classifier = nn.Sequential(
-                nn.Linear(d_hid, 64),
+                nn.Linear(d_hid*d_head, 64),
                 nn.ReLU(),
                 nn.Dropout(self.dropout_p),
                 nn.Linear(64, num_classes)
@@ -215,7 +217,8 @@ class SERClassifier(nn.Module):
         d_hid: int=64,          # Hidden Layer size
         n_filters: int=32,      # number of filters
         en_att: bool=False,     # Enable self attention or not
-        att_name: str=''        # Attention Name
+        att_name: str='',       # Attention Name
+        d_head: int=6           # Head dim
     ):
         super(SERClassifier, self).__init__()
         self.dropout_p = 0.1
@@ -269,13 +272,14 @@ class SERClassifier(nn.Module):
             )
         elif self.att_name == "fuse_base":
             self.fuse_att = FuseBaseSelfAttention(
-                d_hid=d_hid
+                d_hid=d_hid,
+                d_head=d_head
             )
         
         # classifier head
         if self.en_att and self.att_name == "fuse_base":
             self.classifier = nn.Sequential(
-                nn.Linear(d_hid, 64),
+                nn.Linear(d_hid*d_head, 64),
                 nn.ReLU(),
                 nn.Dropout(self.dropout_p),
                 nn.Linear(64, num_classes)
@@ -380,7 +384,8 @@ class ImageTextClassifier(nn.Module):
         text_input_dim: int,    # Text data input dim
         d_hid: int=64,          # Hidden Layer size
         en_att: bool=False,     # Enable self attention or not
-        att_name: str=''        # Attention Name
+        att_name: str='',       # Attention Name
+        d_head: int=6           # Head dim
     ):
         super(ImageTextClassifier, self).__init__()
         self.dropout_p = 0.1
@@ -408,13 +413,14 @@ class ImageTextClassifier(nn.Module):
         # Self attention module
         if self.att_name == "fuse_base":
             self.fuse_att = FuseBaseSelfAttention(
-                d_hid=d_hid
+                d_hid=d_hid,
+                d_head=d_head
             )
         
         # classifier head
         if self.en_att and self.att_name == "fuse_base":
             self.classifier = nn.Sequential(
-                nn.Linear(d_hid, 64),
+                nn.Linear(d_hid*d_head, 64),
                 nn.ReLU(),
                 nn.Dropout(self.dropout_p),
                 nn.Linear(64, num_classes)
@@ -479,7 +485,8 @@ class HARClassifier(nn.Module):
         d_hid: int=128,         # Hidden Layer size
         n_filters: int=32,      # number of filters
         en_att: bool=False,     # Enable self attention or not
-        att_name: str=''        # Attention Name
+        att_name: str='',       # Attention Name
+        d_head: int=6           # Head dim
     ):
         super(HARClassifier, self).__init__()
         self.dropout_p = 0.1
@@ -536,13 +543,14 @@ class HARClassifier(nn.Module):
             self.gyro_att = BaseSelfAttention(d_hid=d_hid)
         elif self.att_name == "fuse_base":
             self.fuse_att = FuseBaseSelfAttention(
-                d_hid=d_hid
+                d_hid=d_hid,
+                d_head=d_head
             )
         
         # classifier head
         if self.en_att and self.att_name == "fuse_base":
             self.classifier = nn.Sequential(
-                nn.Linear(d_hid, 64),
+                nn.Linear(d_hid*d_head, 64),
                 nn.ReLU(),
                 nn.Dropout(self.dropout_p),
                 nn.Linear(64, num_classes)
@@ -630,7 +638,8 @@ class ECGClassifier(nn.Module):
         d_hid: int=64,              # Hidden Layer size
         n_filters: int=32,          # number of filters
         en_att: bool=False,         # Enable self attention or not
-        att_name: str=''            # Attention Name
+        att_name: str='',       # Attention Name
+        d_head: int=4           # Head dim
     ):
         super(ECGClassifier, self).__init__()
         self.dropout_p = 0.1
@@ -672,10 +681,11 @@ class ECGClassifier(nn.Module):
         # classifier head
         if self.en_att and self.att_name == "fuse_base":
             self.fuse_att = FuseBaseSelfAttention(
-                d_hid=d_hid
+                d_hid=d_hid,
+                d_head=d_head
             )
             self.classifier = nn.Sequential(
-                nn.Linear(d_hid, 64),
+                nn.Linear(d_hid*d_head, 64),
                 nn.ReLU(),
                 nn.Dropout(self.dropout_p),
                 nn.Linear(64, num_classes)
@@ -918,12 +928,16 @@ class FuseBaseSelfAttention(nn.Module):
     # https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8421023
     def __init__(
         self, 
-        d_hid:  int=64
+        d_hid:  int=64,
+        d_head: int=4
     ):
         super().__init__()
-        self.att_fc1 = nn.Linear(d_hid, 1)
+        self.att_fc1 = nn.Linear(d_hid, 512)
         self.att_pool = nn.Tanh()
-        self.att_fc2 = nn.Linear(1, 1)
+        self.att_fc2 = nn.Linear(512, d_head)
+
+        self.d_hid = d_hid
+        self.d_head = d_head
 
     def forward(
         self,
@@ -933,11 +947,15 @@ class FuseBaseSelfAttention(nn.Module):
         a_len=None
     ):
         att = self.att_pool(self.att_fc1(x))
-        att = self.att_fc2(att).squeeze(-1)
+        # att = self.att_fc2(att).squeeze(-1)
+        att = self.att_fc2(att)
+        att = att.transpose(1, 2)
         if val_a is not None:
             for idx in range(len(val_a)):
-                att[idx, val_a[idx]:a_len] = -1e5
-                att[idx, a_len+val_b[idx]:] = -1e5
-        att = torch.softmax(att, dim=1)
-        x = (att.unsqueeze(2) * x).sum(axis=1)
+                att[idx, :, val_a[idx]:a_len] = -1e5
+                att[idx, :, a_len+val_b[idx]:] = -1e5
+        att = torch.softmax(att, dim=2)
+        # x = torch.matmul(att, x).mean(axis=1)
+        x = torch.matmul(att, x)
+        x = x.reshape(x.shape[0], self.d_head*self.d_hid)
         return x
