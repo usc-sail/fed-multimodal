@@ -341,6 +341,8 @@ if __name__ == '__main__':
             'result',
             args.fed_alg,
             args.dataset,
+            server.feature,
+            server.att,
             server.model_setting_str
         )
         Path.mkdir(save_json_path, parents=True, exist_ok=True)
