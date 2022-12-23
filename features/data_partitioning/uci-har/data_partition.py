@@ -125,7 +125,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_partition_path",
         type=str,
-        default=path_conf["output_dir"],
+        default=f'{path_conf["output_dir"]}/partition',
         help="Output path of speech_commands data set",
     )
     
