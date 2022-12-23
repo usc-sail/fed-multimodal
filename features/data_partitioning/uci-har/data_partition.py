@@ -7,6 +7,7 @@ import sys, os
 import argparse
 import numpy as np
 import pandas as pd
+import configparser
 import os.path as osp
 from tqdm import tqdm
 from pathlib import Path
@@ -35,7 +36,7 @@ def data_partition(args: dict):
     partition_dict['dev'] = list()
     
     for data_type in ['train', 'test']:
-        data_root_path = Path(args.raw_data_dir)
+        data_root_path = Path(args.raw_data_dir).joinpath(args.dataset)
         subject_path = data_root_path.joinpath(data_type, 'subject_'+data_type+'.txt')
         data_path = data_root_path.joinpath(data_type, 'Inertial Signals')
         client_id_data = np.genfromtxt(str(subject_path), dtype=int)
@@ -97,13 +98,20 @@ def data_partition(args: dict):
 
 
 if __name__ == "__main__":
+
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
     
     parser = argparse.ArgumentParser()
     
     parser.add_argument(
         "--raw_data_dir",
         type=str,
-        default="/media/data/public-data/HAR/UCI-HAR",
+        default=path_conf["data_dir"],
         help="Raw data path of extrasensory data set",
     )
     
@@ -117,7 +125,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_partition_path",
         type=str,
-        default="/media/data/projects/speech-privacy/fed-multimodal/partition",
+        default=path_conf["output_dir"],
         help="Output path of speech_commands data set",
     )
     
