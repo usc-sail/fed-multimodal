@@ -47,10 +47,18 @@ def set_seed(seed):
 
 
 def parse_args():
+
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[2].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+
     parser = argparse.ArgumentParser(description='FedMultimodal experiments')
     parser.add_argument(
         '--data_dir', 
-        default='/media/data/projects/speech-privacy/fed-multimodal/',
+        default=path_conf['output_dir'],
         type=str, 
         help='output feature directory'
     )

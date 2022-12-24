@@ -8,7 +8,6 @@ import pickle
 import os, sys
 import logging
 import argparse
-import opensmile
 import torchaudio
 
 import numpy as np
@@ -29,24 +28,34 @@ logging.basicConfig(
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Extract text features')
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+
+    parser = argparse.ArgumentParser(description='Extract audio features')
     parser.add_argument(
         '--raw_data_dir',
-        default='/media/data/public-data/SER/meld/MELD.Raw', 
+        default=path_conf['data_dir'], 
         type=str,
-        help='source data directory')
+        help='source data directory'
+    )
 
     parser.add_argument(
         '--output_dir', 
-        default='/media/data/projects/speech-privacy/fed-multimodal/',
+        default=path_conf['output_dir'],
         type=str, 
-        help='output feature directory')
+        help='output feature directory'
+    )
 
     parser.add_argument(
         '--feature_type', 
         default='mobilebert',
         type=str, 
-        help='output feature name')
+        help='output feature name'
+    )
 
     parser.add_argument("--run_extraction", default=True, action='store_true')
     parser.add_argument('--skip_extraction', dest='run_extraction', action='store_false')

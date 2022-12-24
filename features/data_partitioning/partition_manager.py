@@ -38,7 +38,7 @@ class partition_manager():
             self.train_file_list.sort()
             self.test_file_list.sort()
         elif self.args.dataset == "crema_d":
-            self.file_list = [x for x in Path(self.args.raw_data_dir).joinpath("AudioWAV").iterdir() if '.wav' in x.parts[-1]]
+            self.file_list = [x for x in Path(self.args.raw_data_dir).joinpath(self.args.dataset, 'CREMA-D', "AudioWAV").iterdir() if '.wav' in x.parts[-1]]
             self.file_list.sort()
             
     def fetch_label_dict(self):

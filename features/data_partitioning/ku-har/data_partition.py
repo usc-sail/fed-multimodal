@@ -27,7 +27,7 @@ def data_partition(args: dict):
     pm.fetch_label_dict()
     
     # save the partition
-    output_data_path = Path(args.output_partition_path).joinpath(args.dataset)
+    output_data_path = Path(args.output_partition_path).joinpath('partition', args.dataset)
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
         
     # data root folder
@@ -36,7 +36,7 @@ def data_partition(args: dict):
     partition_dict['dev'] = list()
 
     # read all keys
-    data_root_path = Path(args.raw_data_dir)
+    data_root_path = Path(args.raw_data_dir).joinpath(args.dataset)
     client_data_dict = dict()
     for label in pm.label_dict:
         for file_path in os.listdir(data_root_path.joinpath('Trimmed_interpolated_data', label)):
@@ -70,6 +70,7 @@ def data_partition(args: dict):
         partition_dict['test'] = list()
         # save data path
         output_data_path = Path(args.output_partition_path).joinpath(
+            'partition',
             args.dataset, 
             f'fold{fold_idx+1}'
         )
@@ -121,12 +122,19 @@ def data_partition(args: dict):
 
 if __name__ == "__main__":
     
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+    
     parser = argparse.ArgumentParser()
     
     parser.add_argument(
         "--raw_data_dir",
         type=str,
-        default="/media/data/public-data/HAR/KU-HAR",
+        default=path_conf["data_dir"],
         help="Raw data path of extrasensory data set",
     )
     
@@ -140,8 +148,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_partition_path",
         type=str,
-        default="/media/data/projects/speech-privacy/fed-multimodal/partition",
-        help="Output path of speech_commands data set",
+        default=path_conf["output_dir"],
+        help="Output path of ku-har data set",
     )
     
     parser.add_argument(

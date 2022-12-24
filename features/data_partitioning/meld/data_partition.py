@@ -4,7 +4,7 @@ import argparse
 import time, sys
 import numpy as np
 import pandas as pd
-import opensmile, argparse, pickle, pdb, re
+import argparse, pickle, pdb, re
 
 from tqdm import tqdm
 from pathlib import Path
@@ -25,14 +25,14 @@ def data_partition(
             {speaker_id: [[speaker_id, wav_file_name, wav_file_path, label, text_data], ...]}
     """
     if split == 'train':
-        label_path = f'{args.raw_data_dir}/train_sent_emo.csv'
-        data_path = f'{args.raw_data_dir}/train_splits'
+        label_path = f'{args.raw_data_dir}/meld/MELD.Raw/train_sent_emo.csv'
+        data_path = f'{args.raw_data_dir}/meld/MELD.Raw/train_splits'
     elif split == 'test':
-        label_path = f'{args.raw_data_dir}/test_sent_emo.csv'
-        data_path = f'{args.raw_data_dir}/output_repeated_splits_test'
+        label_path = f'{args.raw_data_dir}/meld/MELD.Raw/test_sent_emo.csv'
+        data_path = f'{args.raw_data_dir}/meld/MELD.Raw/output_repeated_splits_test'
     elif split == 'dev':
-        label_path = f'{args.raw_data_dir}/dev_sent_emo.csv'
-        data_path = f'{args.raw_data_dir}/dev_splits_complete'
+        label_path = f'{args.raw_data_dir}/meld/MELD.Raw/dev_sent_emo.csv'
+        data_path = f'{args.raw_data_dir}/meld/MELD.Raw/dev_splits_complete'
         
     df_label = pd.read_csv(label_path)
     err = []
@@ -55,25 +55,32 @@ def data_partition(
     
     for filter_speaker in ["All", "Man", "Policeman", "Tag", "Woman"]:
         if filter_speaker in data_dict: data_dict.pop(filter_speaker)
-    
+
     return data_dict
         
     
 if __name__ == '__main__':
+
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
 
     # Argument parser
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--raw_data_dir",
         type=str,
-        default="/media/data/public-data/SER/meld/MELD.Raw",
+        default=path_conf['data_dir'],
         help="Raw data path of speech_commands data set",
     )
     
     parser.add_argument(
         "--output_partition_path",
         type=str,
-        default="/media/data/projects/speech-privacy/fed-multimodal/partition",
+        default=path_conf['output_dir'],
         help="Output path of speech_commands data set",
     )
 
@@ -92,7 +99,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # save the partition
-    output_data_path = Path(args.output_partition_path).joinpath(args.dataset)
+    output_data_path = Path(args.output_partition_path).joinpath('partition', args.dataset)
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
 
     # define partition manager

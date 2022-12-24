@@ -46,10 +46,17 @@ def set_seed(seed):
     random.seed(seed)
 
 def parse_args():
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[2].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+
     parser = argparse.ArgumentParser(description='FedMultimoda experiments')
     parser.add_argument(
         '--data_dir', 
-        default='/media/data/projects/speech-privacy/fed-multimodal/',
+        default=path_conf["output_dir"],
         type=str, 
         help='output feature directory'
     )
@@ -275,6 +282,7 @@ if __name__ == '__main__':
     # set dataloaders
     dataloader_dict = dict()
     logging.info('Reading Data')
+
     for client_id in tqdm(dm.client_ids):
         audio_dict = dm.load_audio_feat(
             client_id=client_id
@@ -298,6 +306,7 @@ if __name__ == '__main__':
             default_feat_shape_a=np.array([1000, constants.feature_len_dict["mfcc"]]),
             default_feat_shape_b=np.array([10, constants.feature_len_dict["mobilebert"]])
         )
+        
     # pdb.set_trace()
     # We perform 5 fold experiments with 5 seeds
     for fold_idx in range(1, 6):

@@ -5,7 +5,7 @@ import argparse
 import time, sys
 import numpy as np
 import pandas as pd
-import opensmile, argparse, pickle, pdb, re
+import argparse, pickle, pdb, re
 
 from tqdm import tqdm
 from pathlib import Path
@@ -17,19 +17,26 @@ from partition_manager import partition_manager
 
 if __name__ == '__main__':
 
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+
     # Argument parser
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--raw_data_dir",
         type=str,
-        default="/media/data/public-data/SER/crema_d/CREMA-D",
+        default=path_conf['data_dir'],
         help="Raw data path of CREMA-D data set",
     )
     
     parser.add_argument(
         "--output_partition_path",
         type=str,
-        default="/media/data/projects/speech-privacy/fed-multimodal/partition",
+        default=path_conf['output_dir'],
         help="Output path of CREMA-D data set",
     )
 
@@ -48,7 +55,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # save the partition
-    output_data_path = Path(args.output_partition_path).joinpath(args.dataset)
+    output_data_path = Path(args.output_partition_path).joinpath('partition', args.dataset)
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
 
     # define partition manager
@@ -60,9 +67,15 @@ if __name__ == '__main__':
     pm.fetch_label_dict()
 
     # read demographics
-    demo_df = pd.read_csv(str(Path(args.raw_data_dir).joinpath('VideoDemographics.csv')), index_col=0)
+    demo_df = pd.read_csv(str(Path(args.raw_data_dir).joinpath(
+        args.dataset, 
+        'CREMA-D', 
+        'VideoDemographics.csv'
+    )), index_col=0)
     # read ratings
     rating_df = pd.read_csv(str(Path(args.raw_data_dir).joinpath(
+        args.dataset, 
+        'CREMA-D', 
         'processedResults', 
         'summaryTable.csv'
     )), index_col=1)
@@ -103,6 +116,7 @@ if __name__ == '__main__':
         partition_dict['test'] = list()
         # save data path
         output_data_path = Path(args.output_partition_path).joinpath(
+            'partition',
             args.dataset, 
             f'fold{fold_idx+1}'
         )
