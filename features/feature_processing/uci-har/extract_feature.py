@@ -19,6 +19,7 @@ from feature_manager import feature_manager
 
 
 def parse_args():
+    
     # read path config files
     path_conf = dict()
     with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:

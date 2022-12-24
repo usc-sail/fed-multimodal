@@ -45,8 +45,8 @@ def data_partition(args: dict):
     for fold_idx in range(len(train_file_list)):
     
         # read train and test split
-        with open(Path(args.raw_data_dir).joinpath(train_file_list[fold_idx])) as f: train_split_files = f.readlines()
-        with open(Path(args.raw_data_dir).joinpath(test_file_list[fold_idx])) as f: test_split_files = f.readlines()
+        with open(Path(args.raw_data_dir).joinpath(args.dataset, train_file_list[fold_idx])) as f: train_split_files = f.readlines()
+        with open(Path(args.raw_data_dir).joinpath(args.dataset, test_file_list[fold_idx])) as f: test_split_files = f.readlines()
         
         # split train and validation
         train_val_file_id, test_file_id = list(), list()
@@ -76,7 +76,11 @@ def data_partition(args: dict):
             client_label_list.append(len(np.unique(lable_list)))
     
         # save the partition
-        output_data_path = Path(args.output_partition_path).joinpath(args.dataset, f'fold{fold_idx+1}')
+        output_data_path = Path(args.output_partition_path).joinpath(
+            'partition', 
+            args.dataset, 
+            f'fold{fold_idx+1}'
+        )
         Path.mkdir(output_data_path, parents=True, exist_ok=True)
         
         client_data_dict = dict()
@@ -96,18 +100,26 @@ def data_partition(args: dict):
         
 if __name__ == "__main__":
     
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+    
     parser = argparse.ArgumentParser()
+    
     parser.add_argument(
         "--raw_data_dir",
         type=str,
-        default="/media/data/public-data/MMAction/ucf101",
-        help="Raw data path of speech_commands data set",
+        default=path_conf["data_dir"],
+        help="Raw data path of extrasensory data set",
     )
     
     parser.add_argument(
         "--output_partition_path",
         type=str,
-        default="/media/data/projects/speech-privacy/fed-multimodal/partition",
+        default=path_conf["output_dir"],
         help="Output path of speech_commands data set",
     )
 
@@ -128,7 +140,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--num_clients', 
         type=int,
-        default=200,
+        default=100,
         help='Number of clients to cut from whole data.'
     )
     parser.add_argument("--dataset", default="ucf101")

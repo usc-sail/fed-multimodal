@@ -20,16 +20,24 @@ from feature_manager import feature_manager
 
 
 def parse_args():
+
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+
     parser = argparse.ArgumentParser(description='Extract frame level features')
     parser.add_argument(
         '--raw_data_dir',
-        default='/media/data/public-data/MMAction/ucf101', 
+        default=path_conf["data_dir"],
         type=str,
         help='source video directory'
     )
     parser.add_argument(
         '--output_dir', 
-        default='/media/data/projects/speech-privacy/fed-multimodal/',
+        default=path_conf["output_dir"],
         type=str, 
         help='output feature directory'
     )
@@ -75,7 +83,11 @@ if __name__ == '__main__':
                 file_path = partition_dict[client][idx][1]
                 video_id, _ = osp.splitext(osp.basename(file_path))
                 label_str = osp.basename(osp.dirname(file_path))
-                features = feature_manager.extract_frame_features(video_id, label_str, max_len=10)
+                features = feature_manager.extract_frame_features(
+                    video_id, 
+                    label_str, 
+                    max_len=10
+                )
                 data_dict[f'{label_str}/{video_id}'] = features
             
         # saving features

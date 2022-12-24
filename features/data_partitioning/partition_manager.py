@@ -18,7 +18,7 @@ class partition_manager():
         if self.args.dataset == "ucf101":
             # read all files
             self.file_list = glob.glob(
-                self.args.raw_data_dir + '/audios/*/*.wav'
+                self.args.raw_data_dir + '/ucf101/audios/*/*.wav'
             )
             # raise error when no files found
             if len(self.file_list) == 0: 
@@ -27,10 +27,10 @@ class partition_manager():
         elif self.args.dataset in ["mit10", "mit51", "mit101"]:
             # read trani/test files
             self.train_file_list = glob.glob(
-                self.args.raw_data_dir + '/audios/training/*/*.wav'
+                self.args.raw_data_dir + '/mit/audios/training/*/*.wav'
             )
             self.test_file_list = glob.glob(
-                self.args.raw_data_dir + '/audios/validation/*/*.wav'
+                self.args.raw_data_dir + '/mit/audios/validation/*/*.wav'
             )
             # raise error when no files found
             if len(self.train_file_list) == 0: 

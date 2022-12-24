@@ -246,7 +246,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     # find device
-    device = torch.device("cuda:0") if torch.cuda.is_available() else "cpu"
+    device = torch.device("cuda:3") if torch.cuda.is_available() else "cpu"
     if torch.cuda.is_available(): print('GPU available, use GPU')
     
     # result

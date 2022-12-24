@@ -29,10 +29,11 @@ def data_partition(args: dict):
     # Fetch all labels
     pm.fetch_label_dict() # obtaining the label dictionary 
 
-    # get the raw csv data 
-    train_csv_data = pd.read_csv(Path(args.raw_data_dir).joinpath("crisismmd_datasplit_all", "task_humanitarian_text_img_train.tsv"), sep='\t')
-    val_csv_data = pd.read_csv(Path(args.raw_data_dir).joinpath("crisismmd_datasplit_all", "task_humanitarian_text_img_dev.tsv"), sep='\t')
-    test_csv_data = pd.read_csv(Path(args.raw_data_dir).joinpath("crisismmd_datasplit_all", "task_humanitarian_text_img_test.tsv"), sep='\t')
+    # get the raw csv data
+    data_path = Path(args.raw_data_dir).joinpath(args.dataset, 'CrisisMMD_v2.0')
+    train_csv_data = pd.read_csv(data_path.joinpath("crisismmd_datasplit_all", "task_humanitarian_text_img_train.tsv"), sep='\t')
+    val_csv_data = pd.read_csv(data_path.joinpath("crisismmd_datasplit_all", "task_humanitarian_text_img_dev.tsv"), sep='\t')
+    test_csv_data = pd.read_csv(data_path.joinpath("crisismmd_datasplit_all", "task_humanitarian_text_img_test.tsv"), sep='\t')
 
     train_data_dict, dev_data_dict, test_data_dict = dict(), dict(), dict()
     
@@ -42,7 +43,7 @@ def data_partition(args: dict):
         # print(train_text)
         train_data_dict[train_csv_data['image_id'].iloc[i]] = [
             train_csv_data['image_id'].iloc[i],
-            str(Path(args.raw_data_dir).joinpath(train_csv_data['image'].iloc[i])),
+            str(Path(data_path).joinpath(train_csv_data['image'].iloc[i])),
             pm.label_dict[train_csv_data['label_image'].iloc[i]],
             train_text
         ]
@@ -52,7 +53,7 @@ def data_partition(args: dict):
         val_text=remove_url(val_csv_data['tweet_text'].iloc[i]).strip()
         dev_data_dict[val_csv_data['image_id'].iloc[i]] = [
             val_csv_data['image_id'].iloc[i],
-            str(Path(args.raw_data_dir).joinpath(val_csv_data['image'].iloc[i])),
+            str(Path(data_path).joinpath(val_csv_data['image'].iloc[i])),
             pm.label_dict[val_csv_data['label_image'].iloc[i]],
             val_text
         ]
@@ -62,7 +63,7 @@ def data_partition(args: dict):
         test_text=remove_url(val_csv_data['tweet_text'].iloc[i]).strip()
         test_data_dict[test_csv_data['image_id'].iloc[i]] = [
             test_csv_data['image_id'].iloc[i],
-            str(Path(args.raw_data_dir).joinpath(test_csv_data['image'].iloc[i])),
+            str(Path(data_path).joinpath(test_csv_data['image'].iloc[i])),
             pm.label_dict[test_csv_data['label_image'].iloc[i]],
             test_text
         ]
@@ -80,7 +81,7 @@ def data_partition(args: dict):
     )
 
     # Save the partition
-    output_data_path = Path(args.output_partition_path).joinpath(args.dataset)
+    output_data_path = Path(args.output_partition_path).joinpath('partition', args.dataset)
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
 
     # Obtrain train mapping
@@ -100,20 +101,27 @@ def data_partition(args: dict):
 
 if __name__ == "__main__":
 
-    # read arguments
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+    
     parser = argparse.ArgumentParser()
+    
     parser.add_argument(
         "--raw_data_dir",
         type=str,
-        default="/media/data/public-data/ImageText/CrisisMMD_v2.0",
-        help="Raw data path of Moments In Time dataset",
+        default=path_conf["data_dir"],
+        help="Raw data path of crisis-mmd data set",
     )
     
     parser.add_argument(
         "--output_partition_path",
         type=str,
-        default="/media/data/projects/speech-privacy/fed-multimodal/partition",
-        help="Output path of speech_commands data set",
+        default=path_conf["output_dir"],
+        help="Output path of crisis-mmd data set",
     )
 
     parser.add_argument(
@@ -133,7 +141,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--num_clients', 
         type=int, 
-        default=200, 
+        default=100, 
         help='Number of clients to cut from whole data.'
     )
 

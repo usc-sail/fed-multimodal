@@ -10,6 +10,8 @@ import torchaudio
 import numpy as np
 import os.path as osp
 
+os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
+
 from PIL import Image
 from tqdm import tqdm
 from pathlib import Path
@@ -75,12 +77,14 @@ class feature_manager():
         """
         if split is None:
             video_path = Path(self.args.raw_data_dir).joinpath(
+                self.args.dataset,
                 'rawframes', 
                 label_str, 
                 video_id
             )
         else: 
             video_path = Path(self.args.raw_data_dir).joinpath(
+                self.args.dataset,
                 'rawframes', 
                 split, 
                 label_str, 
@@ -126,7 +130,7 @@ class feature_manager():
             features = self.model(input_data).detach().cpu().numpy()
         return features
     
-    def extract_frame_features(
+    def extract_frame_features_ser(
         self, 
         video_path: str,
         max_len: int=10
