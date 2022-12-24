@@ -131,7 +131,8 @@ class ClientFedRS(object):
                     # pdb.set_trace()
                     # outputs = torch.log(outputs)
                     # outputs = self.restricted_softmax(outputs)
-                    outputs = torch.Tensor(m_logits).to(self.device) * outputs.mm(ws.transpose(0, 1))
+                    # pdb.set_trace()
+                    outputs = m_logits * outputs.mm(ws.transpose(0, 1))
                     outputs = torch.log_softmax(outputs, dim=1)
                     
                 # backward

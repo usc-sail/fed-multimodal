@@ -186,7 +186,7 @@ class MMActionClassifier(nn.Module):
             elif self.att_name == "fuse_base":
                 # get attention output
                 a_max_len = x_audio.shape[1]
-                x_mm = torch.concat((x_audio, x_video), dim=1)
+                x_mm = torch.cat((x_audio, x_video), dim=1)
                 x_mm = self.fuse_att(x_mm, len_a, len_v, a_max_len)
             elif self.att_name == 'base':
                 # get attention output
@@ -196,13 +196,13 @@ class MMActionClassifier(nn.Module):
             # 4. Average pooling
             x_audio = torch.mean(x_audio, axis=1)
             x_video = torch.mean(x_video, axis=1)
-            x_mm = torch.concat((x_audio, x_video), dim=1)
+            x_mm = torch.cat((x_audio, x_video), dim=1)
 
         # 5. Projection with no attention
         if self.en_att and self.att_name != "fuse_base":
             x_audio = self.audio_proj(x_audio)
             x_video = self.video_proj(x_video)
-            x_mm = torch.concat((x_audio, x_video), dim=1)
+            x_mm = torch.cat((x_audio, x_video), dim=1)
         # 6. MM embedding and predict
         preds = self.classifier(x_mm)
         return preds, x_mm
@@ -357,19 +357,19 @@ class SERClassifier(nn.Module):
             elif self.att_name == "fuse_base":
                 # get attention output
                 a_max_len = x_audio.shape[1]
-                x_mm = torch.concat((x_audio, x_text), dim=1)
+                x_mm = torch.cat((x_audio, x_text), dim=1)
                 x_mm = self.fuse_att(x_mm, len_a, len_t, a_max_len)
         else:
             # 4. Average pooling Projection
             x_audio = torch.mean(x_audio, axis=1)
             x_text = torch.mean(x_text, axis=1)
-            x_mm = torch.concat((x_audio, x_text), dim=1)
+            x_mm = torch.cat((x_audio, x_text), dim=1)
         
         # 5. Projection
         if self.en_att and self.att_name != "fuse_base":
             x_audio = self.audio_proj(x_audio)
             x_text = self.text_proj(x_text)
-            x_mm = torch.concat((x_audio, x_text), dim=1)
+            x_mm = torch.cat((x_audio, x_text), dim=1)
         
         # 6. MM embedding and predict
         preds = self.classifier(x_mm)
@@ -465,12 +465,12 @@ class ImageTextClassifier(nn.Module):
         if self.en_att:
             if self.att_name == "fuse_base":
                 # get attention output
-                x_mm = torch.concat((x_img.unsqueeze(dim=1), x_text), dim=1)
+                x_mm = torch.cat((x_img.unsqueeze(dim=1), x_text), dim=1)
                 x_mm = self.fuse_att(x_mm, len_i, len_t, 1)
         else:
             # 4. Average pooling
             x_text = torch.mean(x_text, axis=1)
-            x_mm = torch.concat((x_img, x_text), dim=1)
+            x_mm = torch.cat((x_img, x_text), dim=1)
             
         # 4. MM embedding and predict
         preds = self.classifier(x_mm)
@@ -605,7 +605,7 @@ class HARClassifier(nn.Module):
                 x_gyro = self.gyro_att(x_gyro)
             elif self.att_name == "fuse_base":
                 # get attention output
-                x_mm = torch.concat((x_acc, x_gyro), dim=1)
+                x_mm = torch.cat((x_acc, x_gyro), dim=1)
                 x_mm = self.fuse_att(
                     x_mm, 
                     val_a=l_a, 
@@ -616,13 +616,13 @@ class HARClassifier(nn.Module):
             # 4. Average pooling
             x_acc = torch.mean(x_acc, axis=1)
             x_gyro = torch.mean(x_gyro, axis=1)
-            x_mm = torch.concat((x_acc, x_gyro), dim=1)
+            x_mm = torch.cat((x_acc, x_gyro), dim=1)
 
         # 5. Projection
         if self.en_att and self.att_name != "fuse_base":
             x_acc = self.acc_proj(x_acc)
             x_gyro = self.gyro_proj(x_gyro)
-            x_mm = torch.concat((x_acc, x_gyro), dim=1)
+            x_mm = torch.cat((x_acc, x_gyro), dim=1)
         
         # 6. MM embedding and predict
         preds = self.classifier(x_mm)
@@ -727,7 +727,7 @@ class ECGClassifier(nn.Module):
         # 3. Attention
         if self.en_att:
             # get attention output
-            x_mm = torch.concat((x_i_to_avf, x_v1_to_v6), dim=1)
+            x_mm = torch.cat((x_i_to_avf, x_v1_to_v6), dim=1)
             x_mm = self.fuse_att(
                 x_mm, 
                 val_a=l_a, 
@@ -739,7 +739,7 @@ class ECGClassifier(nn.Module):
             x_i_to_avf = torch.mean(x_i_to_avf, axis=1)
             x_v1_to_v6 = torch.mean(x_v1_to_v6, axis=1)
             # 6. MM embedding and predict
-            x_mm = torch.concat((x_i_to_avf, x_v1_to_v6), dim=1)
+            x_mm = torch.cat((x_i_to_avf, x_v1_to_v6), dim=1)
         preds = self.classifier(x_mm)
         return preds, x_mm
 
