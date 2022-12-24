@@ -37,13 +37,18 @@ def data_partition(args: dict):
     pm.fetch_label_dict()
     
     # save the partition
-    output_data_path = Path(args.output_partition_path).joinpath(args.dataset)
+    output_data_path = Path(args.output_partition_path).joinpath(
+        'partition',
+        args.dataset
+    )
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
         
     # data root folder
     data_path = Path(args.raw_data_dir).joinpath(
-        'ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.1'
+        args.dataset,
+        'ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3'
     )
+    
     patient_df = pd.read_csv(
         data_path.joinpath('ptbxl_database.csv'), 
         index_col=0
@@ -127,19 +132,26 @@ def data_partition(args: dict):
 
 if __name__ == "__main__":
     
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+    
     parser = argparse.ArgumentParser()
     
     parser.add_argument(
         "--raw_data_dir",
         type=str,
-        default="/media/data/public-data/Health/ptb-xl",
+        default=path_conf["data_dir"],
         help="Raw data path of extrasensory data set",
     )
     
     parser.add_argument(
         "--output_partition_path",
         type=str,
-        default="/media/data/projects/speech-privacy/fed-multimodal/partition",
+        default=path_conf["output_dir"],
         help="Output path of speech_commands data set",
     )
 

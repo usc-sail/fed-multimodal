@@ -29,17 +29,25 @@ logging.basicConfig(
 )
 
 def parse_args():
+
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+    
     parser = argparse.ArgumentParser(description='Extract 6+6 lead features')
     parser.add_argument(
         "--raw_data_dir",
         type=str,
-        default="/media/data/public-data/Health/ptb-xl",
+        default=path_conf['data_dir'],
         help="Raw data path of ptb-xl data set",
     )
     
     parser.add_argument(
         '--output_dir', 
-        default='/media/data/projects/speech-privacy/fed-multimodal/',
+        default=path_conf['output_dir'],
         type=str, 
         help='output feature directory'
     )
@@ -75,7 +83,8 @@ if __name__ == '__main__':
     Path.mkdir(I_to_AVF_output_data_path, parents=True, exist_ok=True)
     Path.mkdir(V1_to_V6_output_data_path, parents=True, exist_ok=True)
     data_path = Path(args.raw_data_dir).joinpath(
-        'ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.1'
+        args.dataset,
+        'ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3'
     )
     
     # initialize feature processer
