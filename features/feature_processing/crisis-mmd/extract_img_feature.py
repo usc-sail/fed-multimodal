@@ -28,7 +28,7 @@ def parse_args():
             key, val = line.strip().split('=')
             path_conf[key] = val.replace("\"", "")
 
-    parser = argparse.ArgumentParser(description='Extract audio features')
+    parser = argparse.ArgumentParser(description='Extract img features')
     parser.add_argument(
         '--raw_data_dir',
         default=path_conf["data_dir"],

@@ -30,30 +30,30 @@ def data_partition(args: dict):
     
     # read train, dev, and test dict
     train_data_dict, dev_data_dict, test_data_dict = dict(), dict(), dict()
-    with open(Path(args.raw_data_dir).joinpath("train.jsonl"), "r") as f:
+    with open(Path(args.raw_data_dir).joinpath(args.dataset, "train.jsonl"), "r") as f:
         for line in f:
             line_data = json.loads(line)
             train_data_dict[line_data['img']] = [
                 line_data['img'], 
-                str(Path(args.raw_data_dir).joinpath(line_data['img'])), 
+                str(Path(args.raw_data_dir).joinpath(args.dataset, line_data['img'])), 
                 line_data['label'],
                 line_data['text']
             ]
-    with open(Path(args.raw_data_dir).joinpath("dev_seen.jsonl"), "r") as f:
+    with open(Path(args.raw_data_dir).joinpath(args.dataset, "dev_seen.jsonl"), "r") as f:
         for line in f:
             line_data = json.loads(line)
             dev_data_dict[line_data['img']] = [
                 line_data['img'], 
-                str(Path(args.raw_data_dir).joinpath(line_data['img'])), 
+                str(Path(args.raw_data_dir).joinpath(args.dataset, line_data['img'])), 
                 line_data['label'],
                 line_data['text']
             ]
-    with open(Path(args.raw_data_dir).joinpath("test_seen.jsonl"), "r") as f: 
+    with open(Path(args.raw_data_dir).joinpath(args.dataset, "test_seen.jsonl"), "r") as f: 
         for line in f:
             line_data = json.loads(line)
             test_data_dict[line_data['img']] = [
                 line_data['img'], 
-                str(Path(args.raw_data_dir).joinpath(line_data['img'])), 
+                str(Path(args.raw_data_dir).joinpath(args.dataset, line_data['img'])), 
                 line_data['label'],
                 line_data['text']
             ]
@@ -73,7 +73,7 @@ def data_partition(args: dict):
     )
 
     # Save the partition
-    output_data_path = Path(args.output_partition_path).joinpath(args.dataset)
+    output_data_path = Path(args.output_partition_path).joinpath("partition", args.dataset)
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
 
     # Obtrain train mapping
@@ -93,20 +93,27 @@ def data_partition(args: dict):
 
 
 if __name__ == "__main__":
-    # read arguments
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+    
     parser = argparse.ArgumentParser()
+    
     parser.add_argument(
         "--raw_data_dir",
         type=str,
-        default="/media/data/public-data/ImageText/hateful_memes",
-        help="Raw data path of Moments In Time dataset",
+        default=path_conf["data_dir"],
+        help="Raw data path of hateful memes data set",
     )
     
     parser.add_argument(
         "--output_partition_path",
         type=str,
-        default="/media/data/projects/speech-privacy/fed-multimodal/partition",
-        help="Output path of speech_commands data set",
+        default=path_conf["output_dir"],
+        help="Output path of hateful memes data set",
     )
 
     parser.add_argument(
