@@ -270,7 +270,7 @@ if __name__ == '__main__':
     dm.get_simulation_setting(alpha=args.alpha)
     
     # find device
-    device = torch.device("cuda:1") if torch.cuda.is_available() else "cpu"
+    device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     if torch.cuda.is_available(): print('GPU available, use GPU')
     save_result_dict = dict()
 

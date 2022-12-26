@@ -45,13 +45,24 @@ def set_seed(seed):
     random.seed(seed)
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='FedMultimoda experiments')
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[2].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+
+    parser = argparse.ArgumentParser(
+        description='FedMultimodal experiments'
+    )
+    
     parser.add_argument(
         '--data_dir', 
-        default='/media/data/projects/speech-privacy/fed-multimodal/',
+        default=path_conf['output_dir'],
         type=str, 
         help='output feature directory'
     )
+    
     
     parser.add_argument(
         '--text_feat', 
@@ -260,7 +271,7 @@ if __name__ == '__main__':
     dm.get_simulation_setting(alpha=args.alpha)
     
     # find device
-    device = torch.device("cuda:1") if torch.cuda.is_available() else "cpu"
+    device = torch.device("cuda:0") if torch.cuda.is_available() else "cpu"
     if torch.cuda.is_available(): print('GPU available, use GPU')
     save_result_dict = dict()
 

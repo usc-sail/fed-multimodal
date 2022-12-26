@@ -1,3 +1,0 @@
-[submodule "data/mmaction2"]
-	path = data/mmaction2
-	url = git@github.com:open-mmlab/mmaction2.git

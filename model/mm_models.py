@@ -639,7 +639,7 @@ class ECGClassifier(nn.Module):
         n_filters: int=32,          # number of filters
         en_att: bool=False,         # Enable self attention or not
         att_name: str='',       # Attention Name
-        d_head: int=4           # Head dim
+        d_head: int=6           # Head dim
     ):
         super(ECGClassifier, self).__init__()
         self.dropout_p = 0.1

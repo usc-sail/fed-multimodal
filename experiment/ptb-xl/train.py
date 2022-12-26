@@ -246,7 +246,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     # find device
-    device = torch.device("cuda:3") if torch.cuda.is_available() else "cpu"
+    device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     if torch.cuda.is_available(): print('GPU available, use GPU')
     
     # result
@@ -393,7 +393,7 @@ if __name__ == '__main__':
                 data_split='train',
                 metric='macro_f'
             )
-            if epoch % args.test_frequency == 0:
+            if epoch % args.test_frequency == 0 or epoch == int(args.num_epochs)-1:
                 with torch.no_grad():
                     # 3. Perform the validation on dev set
                     server.inference(dataloader_dict['dev'])
