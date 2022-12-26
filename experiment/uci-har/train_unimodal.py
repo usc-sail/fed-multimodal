@@ -20,7 +20,7 @@ sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), '
 
 import constants
 from server_trainer import Server
-from unimodal_models import RNNClassifier, ConvRNNClassifier
+from unimodal_models import ConvRNNClassifier
 from dataload_manager import DataloadManager
 
 # trainer
@@ -47,7 +47,6 @@ def set_seed(seed):
 
 
 def parse_args():
-
     # read path config files
     path_conf = dict()
     with open(str(Path(os.path.realpath(__file__)).parents[2].joinpath('system.cfg'))) as f:
@@ -64,17 +63,17 @@ def parse_args():
     )
     
     parser.add_argument(
-        '--audio_feat', 
-        default='mfcc',
+        '--acc_feat', 
+        default='acc',
         type=str,
-        help="audio feature name",
+        help="acc feature name",
     )
     
     parser.add_argument(
-        '--video_feat', 
-        default='mobilenet_v2',
+        '--gyro_feat', 
+        default='gyro',
         type=str,
-        help="video feature name",
+        help="gyro feature name",
     )
     
     parser.add_argument(
@@ -172,7 +171,7 @@ def parse_args():
     parser.add_argument(
         "--alpha",
         type=float,
-        default=1.0,
+        default=0.1,
         help="alpha in direchlet distribution",
     )
     
@@ -242,20 +241,22 @@ def parse_args():
     parser.add_argument(
         '--metric', 
         type=str, 
-        default='uar',
+        default='f1',
         help='evaluation metric: uar/acc/f1'
     )
 
     parser.add_argument(
         '--modality', 
         type=str, 
-        default='audio',
+        default='acc',
         help='modality type'
     )
     
     parser.add_argument(
         "--dataset", 
-        default="crema_d"
+        type=str, 
+        default="uci-har",
+        help='data set name'
     )
     args = parser.parse_args()
     return args
@@ -282,67 +283,51 @@ if __name__ == '__main__':
     elif args.fed_alg in ['fed_rs']:
         Client = ClientFedRS
 
+    # load simulation feature
+    dm.load_sim_dict()
+    # load all data
+    dm.get_client_ids()
+
+    # set dataloaders
+    dataloader_dict = dict()
+    logging.info('Loading Data')
+    for client_id in tqdm(dm.client_ids):
+        if args.modality == 'acc':
+            data_dict = dm.load_acc_feat(
+                client_id=client_id
+            )
+        elif args.modality == 'gyro':
+            data_dict = dm.load_gyro_feat(
+                client_id=client_id
+            )
+        dm.get_label_dist(
+            data_dict, 
+            client_id
+        )
+        shuffle = False if client_id in ['dev', 'test'] else True
+        client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=client_id)
+        dataloader_dict[client_id] = dm.set_unimodal_dataloader(
+            data_dict,
+            shuffle=shuffle
+        )
+
     # We perform 5 fold experiments
     for fold_idx in range(1, 6):
-        # load simulation feature
-        dm.load_sim_dict(
-            fold_idx=fold_idx
-        )
-        # load all data
-        dm.get_client_ids(
-            fold_idx=fold_idx
-        )
-
-        # set dataloaders
-        dataloader_dict = dict()
-        logging.info('Loading Data')
-        for client_id in tqdm(dm.client_ids):
-
-            if args.modality == 'audio':
-                data_dict = dm.load_audio_feat(
-                    client_id=client_id, 
-                    fold_idx=fold_idx
-                )
-            elif args.modality == 'video':
-                data_dict = dm.load_video_feat(
-                    client_id=client_id, 
-                    fold_idx=fold_idx
-                )
-            dm.get_label_dist(
-                data_dict, 
-                client_id
-            )
-            shuffle = False if client_id in ['dev', 'test'] else True
-            client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=client_id)
-            dataloader_dict[client_id] = dm.set_unimodal_dataloader(
-                data_dict,
-                shuffle=shuffle
-            )
-        
         # number of clients
         client_ids = [client_id for client_id in dm.client_ids if client_id not in ['dev', 'test']]
         num_of_clients = len(client_ids)
         # set seeds
-        set_seed(8)
+        set_seed(8*fold_idx)
         # loss function
         criterion = nn.NLLLoss().to(device)
         # Define the model
-        if args.modality == 'audio':
-            global_model = ConvRNNClassifier(
-                num_classes=constants.num_class_dict[args.dataset],
-                input_dim=constants.feature_len_dict["mfcc"],
-                d_hid=args.hid_size,
-                en_att=args.att,
-                att_name=args.att_name
-            )
-        elif args.modality == 'video':
-            global_model = RNNClassifier(
-                num_classes=constants.num_class_dict[args.dataset],
-                input_dim=constants.feature_len_dict["mobilenet_v2"],
-                d_hid=args.hid_size,
-                en_att=args.att,
-                att_name=args.att_name
-            )
+        global_model = ConvRNNClassifier(
+            num_classes=constants.num_class_dict[args.dataset],
+            input_dim=constants.feature_len_dict[args.modality],
+            d_hid=args.hid_size,
+            en_att=args.att,
+            att_name=args.att_name
+        )
         global_model = global_model.to(device)
 
         # initialize server
@@ -376,7 +361,7 @@ if __name__ == '__main__':
         )
 
         # set seeds again
-        set_seed(8)
+        set_seed(8*fold_idx)
 
         # Training steps
         for epoch in range(int(args.num_epochs)):
@@ -470,7 +455,7 @@ if __name__ == '__main__':
 
     # Calculate the average of the 5-fold experiments
     save_result_dict['average'] = dict()
-    for metric in ['uar', 'acc', 'top5_acc']:
+    for metric in ['f1', 'acc', 'top5_acc']:
         result_list = list()
         for key in save_result_dict:
             if metric not in save_result_dict[key]: continue
@@ -482,4 +467,3 @@ if __name__ == '__main__':
         save_result_dict, 
         save_json_path.joinpath('result.json')
     )
-

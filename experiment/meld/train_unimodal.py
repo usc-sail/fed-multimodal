@@ -47,7 +47,7 @@ def set_seed(seed):
 
 
 def parse_args():
-
+    
     # read path config files
     path_conf = dict()
     with open(str(Path(os.path.realpath(__file__)).parents[2].joinpath('system.cfg'))) as f:
@@ -71,10 +71,10 @@ def parse_args():
     )
     
     parser.add_argument(
-        '--video_feat', 
-        default='mobilenet_v2',
+        '--text_feat', 
+        default='mobilebert',
         type=str,
-        help="video feature name",
+        help="text feature name",
     )
     
     parser.add_argument(
@@ -255,7 +255,9 @@ def parse_args():
     
     parser.add_argument(
         "--dataset", 
-        default="crema_d"
+        type=str, 
+        default="meld",
+        help='data set name'
     )
     args = parser.parse_args()
     return args
@@ -265,10 +267,6 @@ if __name__ == '__main__':
     # argument parser
     args = parse_args()
 
-    # data manager
-    dm = DataloadManager(args)
-    dm.get_simulation_setting()
-    
     # find device
     device = torch.device("cuda:0") if torch.cuda.is_available() else "cpu"
     if torch.cuda.is_available(): print('GPU available, use GPU')
@@ -282,48 +280,47 @@ if __name__ == '__main__':
     elif args.fed_alg in ['fed_rs']:
         Client = ClientFedRS
 
+    # data manager
+    dm = DataloadManager(args)
+    dm.get_text_feat_path()
+    dm.get_simulation_setting()
+    
+    # load simulation feature
+    dm.load_sim_dict()
+    # load all data
+    dm.get_client_ids()
+
+    # set dataloaders
+    dataloader_dict = dict()
+    logging.info('Loading Data')
+    for client_id in tqdm(dm.client_ids):
+
+        if args.modality == 'audio':
+            data_dict = dm.load_audio_feat(
+                client_id=client_id,
+            )
+        elif args.modality == 'text':
+            data_dict = dm.load_text_feat(
+                client_id=client_id,
+            )
+        dm.get_label_dist(
+            data_dict, 
+            client_id
+        )
+        shuffle = False if client_id in ['dev', 'test'] else True
+        client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=client_id)
+        dataloader_dict[client_id] = dm.set_unimodal_dataloader(
+            data_dict,
+            shuffle=shuffle
+        )
+
     # We perform 5 fold experiments
     for fold_idx in range(1, 6):
-        # load simulation feature
-        dm.load_sim_dict(
-            fold_idx=fold_idx
-        )
-        # load all data
-        dm.get_client_ids(
-            fold_idx=fold_idx
-        )
-
-        # set dataloaders
-        dataloader_dict = dict()
-        logging.info('Loading Data')
-        for client_id in tqdm(dm.client_ids):
-
-            if args.modality == 'audio':
-                data_dict = dm.load_audio_feat(
-                    client_id=client_id, 
-                    fold_idx=fold_idx
-                )
-            elif args.modality == 'video':
-                data_dict = dm.load_video_feat(
-                    client_id=client_id, 
-                    fold_idx=fold_idx
-                )
-            dm.get_label_dist(
-                data_dict, 
-                client_id
-            )
-            shuffle = False if client_id in ['dev', 'test'] else True
-            client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=client_id)
-            dataloader_dict[client_id] = dm.set_unimodal_dataloader(
-                data_dict,
-                shuffle=shuffle
-            )
-        
         # number of clients
         client_ids = [client_id for client_id in dm.client_ids if client_id not in ['dev', 'test']]
         num_of_clients = len(client_ids)
         # set seeds
-        set_seed(8)
+        set_seed(8*fold_idx)
         # loss function
         criterion = nn.NLLLoss().to(device)
         # Define the model
@@ -335,10 +332,10 @@ if __name__ == '__main__':
                 en_att=args.att,
                 att_name=args.att_name
             )
-        elif args.modality == 'video':
+        elif args.modality == 'text':
             global_model = RNNClassifier(
                 num_classes=constants.num_class_dict[args.dataset],
-                input_dim=constants.feature_len_dict["mobilenet_v2"],
+                input_dim=constants.feature_len_dict["mobilebert"],
                 d_hid=args.hid_size,
                 en_att=args.att,
                 att_name=args.att_name
@@ -376,7 +373,7 @@ if __name__ == '__main__':
         )
 
         # set seeds again
-        set_seed(8)
+        set_seed(8*fold_idx)
 
         # Training steps
         for epoch in range(int(args.num_epochs)):
