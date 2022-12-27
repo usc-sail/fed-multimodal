@@ -549,22 +549,39 @@ class DataloadManager():
         :return: dataloader: torch dataloader
         """
         # modify data based on simulation
+        labeled_data_idx, unlabeled_data_idx = list(), list()
         if client_sim_dict is not None:
             for idx in range(len(client_sim_dict)):
                 # read simulate feature
                 sim_data = client_sim_dict[idx][-1]
-                # pdb.set_trace()
                 # read modality A
                 if sim_data[0] == 1: data_a[idx][-1] = None
                 # read modality B
                 if sim_data[1] == 1: data_b[idx][-1] = None
                 # label noise
                 data_a[idx][-2] = sim_data[2]
+                # missing label
+                if sim_data[-1] == 0: labeled_data_idx.append(idx)
+                else: unlabeled_data_idx.append(idx)
             
             # return None when both modalities are missing
             if sim_data[0] == 1 and sim_data[1] == 1:
                 return None
-                
+            
+            labeled_data_a, unlabeled_data_a = list(), list()
+            labeled_data_b, unlabeled_data_b = list(), list()
+            if len(unlabeled_data_idx) > 0:
+                for idx in labeled_data_idx:
+                    labeled_data_a.append(data_a[idx])
+                    labeled_data_b.append(data_b[idx])
+                for idx in unlabeled_data_idx:
+                    unlabeled_data_a.append(data_a[idx])
+                    unlabeled_data_b.append(data_b[idx])
+                data_a = labeled_data_a
+                data_b = labeled_data_b
+
+        if len(data_a) == 0: return None
+  
         data_ab = MMDatasetGenerator(
             data_a, 
             data_b,

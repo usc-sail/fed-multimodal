@@ -70,14 +70,16 @@ class simulation_manager():
         return np.random.binomial(
             size=1, 
             n=1, 
-            p=self.args.missing_modailty_rate)[0]
+            p=self.args.missing_modailty_rate
+        )[0]
     
     def simulate_missing_label(self, seed, size):
         np.random.seed(seed)
         return np.random.binomial(
             size=size, 
             n=1, 
-            p=self.args.missing_modailty_rate)[0]
+            p=self.args.missing_label_rate
+        )
     
     def label_noise_matrix(
         self, 
@@ -175,10 +177,16 @@ class simulation_manager():
             if self.args.label_nosiy == True:
                 orginal_label = data_dict[idx][2]
                 np.random.seed(seed)
-                new_label = np.random.choice(
-                    class_num, 
-                    p=self.prob_matrix[orginal_label]
-                )
+                if self.args.dataset == 'hateful_memes':
+                    change_status = np.random.binomial(size=1, n=1, p=self.args.label_nosiy_level)[0]
+                    new_label = orginal_label
+                    if change_status == 1:
+                        new_label = 1 - orginal_label
+                else:
+                    new_label = np.random.choice(
+                        class_num, 
+                        p=self.prob_matrix[orginal_label]
+                    )
             else:
                 new_label = data_dict[idx][2]
             
