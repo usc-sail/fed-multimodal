@@ -128,6 +128,8 @@ if __name__ == '__main__':
         logging.info(f'simulation missing_modality, missing rate {args.missing_modailty_rate*100}%')
     if args.label_nosiy:
         logging.info(f'simulation label_nosiy, label noise rate {args.label_nosiy_level*100}%')
+    if args.missing_label:
+        logging.info(f'simulation missing_label, label noise rate {args.missing_label_rate*100}%')
     
     for fold_idx in range(1, 6):
         # define output path
