@@ -1,13 +1,13 @@
 import json
 import glob
 import torch
-# import pickle
+import pickle
 import random
 import pdb, os
 import torchaudio
 import numpy as np
 import os.path as osp
-import pickle5 as pickle
+# import pickle5 as pickle
 
 from tqdm import tqdm
 from pathlib import Path
