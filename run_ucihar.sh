@@ -1,3 +1,8 @@
+# 0. download data
+cd data
+bash download_uci_har.sh
+cd ..
+
 # 1. data partition
 python3 features/data_partitioning/uci-har/data_partition.py --alpha 0.1
 python3 features/data_partitioning/uci-har/data_partition.py --alpha 5.0
