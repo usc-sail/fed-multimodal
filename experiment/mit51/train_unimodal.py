@@ -120,6 +120,13 @@ def parse_args():
     )
 
     parser.add_argument(
+        '--test_frequency', 
+        default=5,
+        type=int,
+        help="perform test frequency",
+    )
+
+    parser.add_argument(
         '--sample_rate', 
         default=0.1,
         type=float,
@@ -349,7 +356,9 @@ if __name__ == '__main__':
         save_json_path = Path(os.path.realpath(__file__)).parents[2].joinpath(
             'result',
             args.fed_alg,
-            args.dataset, 
+            args.dataset,
+            server.feature,
+            server.att,
             server.model_setting_str
         )
         Path.mkdir(save_json_path, parents=True, exist_ok=True)
@@ -360,7 +369,7 @@ if __name__ == '__main__':
         )
 
         # set seeds again
-        set_seed(8)
+        set_seed(8*fold_idx)
 
         # Training steps
         for epoch in range(int(args.num_epochs)):
@@ -423,25 +432,26 @@ if __name__ == '__main__':
                 data_split='train', 
                 metric=args.metric
             )
-            with torch.no_grad():
-                # 3. Perform the validation on dev set
-                server.inference(dataloader_dict['dev'])
-                server.result_dict[epoch]['dev'] = server.result
-                server.log_classification_result(
-                    data_split='dev', 
-                    metric=args.metric
-                )
-                # 4. Perform the test on holdout set
-                server.inference(dataloader_dict['test'])
-                server.result_dict[epoch]['test'] = server.result
-                server.log_classification_result(
-                    data_split='test', 
-                    metric=args.metric
-                )
+            if epoch % args.test_frequency == 0 or epoch == int(args.num_epochs)-1:
+                with torch.no_grad():
+                    # 3. Perform the validation on dev set
+                    server.inference(dataloader_dict['dev'])
+                    server.result_dict[epoch]['dev'] = server.result
+                    server.log_classification_result(
+                        data_split='dev', 
+                        metric=args.metric
+                    )
+                    # 4. Perform the test on holdout set
+                    server.inference(dataloader_dict['test'])
+                    server.result_dict[epoch]['test'] = server.result
+                    server.log_classification_result(
+                        data_split='test', 
+                        metric=args.metric
+                    )
             
-            logging.info('---------------------------------------------------------')
-            server.log_epoch_result(metric=args.metric)
-            logging.info('---------------------------------------------------------')
+                logging.info('---------------------------------------------------------')
+                server.log_epoch_result(metric=args.metric)
+                logging.info('---------------------------------------------------------')
 
         # Performance save code
         save_result_dict[f'fold{fold_idx}'] = server.summarize_dict_results()
