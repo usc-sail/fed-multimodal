@@ -178,6 +178,11 @@ class feature_manager():
     ) -> (np.array):
         """Extract the mfcc feature from audio streams."""
         audio, sr = torchaudio.load(str(audio_path))
+        if waveform.shape[0] != 1:
+            audio = torch.mean(audio, dim=0).unsqueeze(0)
+        if sample_rate != 16000:
+            transform_model = torchaudio.transforms.Resample(sample_rate, 16000)
+            audio = transform_model(audio)
         features = torchaudio.compliance.kaldi.fbank(
                     waveform=torch.Tensor(torch.Tensor(audio)),
                     frame_length=frame_length, 
