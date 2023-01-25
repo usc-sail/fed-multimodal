@@ -253,10 +253,7 @@ class Server(object):
                 
                 # forward
                 outputs, _ = self.global_model(
-                    x_a.float(), 
-                    x_b.float(), 
-                    l_a, 
-                    l_b
+                    x_a.float(), x_b.float(), l_a, l_b
                 )
             else:
                 x, l, y = batch_data
@@ -264,8 +261,7 @@ class Server(object):
                 
                 # forward
                 outputs, _ = self.global_model(
-                    x.float(), 
-                    l
+                    x.float(), l
                 )
         
             if not self.multilabel: 
@@ -275,15 +271,11 @@ class Server(object):
             # save results
             if not self.multilabel: 
                 self.eval.append_classification_results(
-                    y, 
-                    outputs, 
-                    loss
+                    y, outputs, loss
                 )
             else:
                 self.eval.append_multilabel_results(
-                    y, 
-                    outputs, 
-                    loss
+                    y, outputs, loss
                 )
                 
         # epoch train results

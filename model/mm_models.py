@@ -314,6 +314,7 @@ class SERClassifier(nn.Module):
         # 2. Rnn forward
         # max pooling, time dim reduce by 8 times
         len_a = len_a//8
+        len_a[len_a==0] = 1
         if len_a[0] != 0:
             x_audio = pack_padded_sequence(
                 x_audio, 

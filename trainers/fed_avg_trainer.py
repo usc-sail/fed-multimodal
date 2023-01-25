@@ -95,10 +95,7 @@ class ClientFedAvg(object):
                     
                     # forward
                     outputs, _ = self.model(
-                        x_a.float(), 
-                        x_b.float(), 
-                        l_a, 
-                        l_b
+                        x_a.float(), x_b.float(), l_a, l_b
                     )
                 else:
                     x, l, y = batch_data
@@ -106,8 +103,7 @@ class ClientFedAvg(object):
                     
                     # forward
                     outputs, _ = self.model(
-                        x.float(), 
-                        l
+                        x.float(), l
                     )
                 
                 if not self.multilabel: 

@@ -53,8 +53,7 @@ class ConvRNNClassifier(nn.Module):
         # Attention modules
         if self.att_name == "base":
             self.att = BaseSelfAttention(
-                d_hid=d_hid,
-                d_head=d_head
+                d_hid=d_hid, d_head=d_head
             )
             
         # classifier head
@@ -86,9 +85,7 @@ class ConvRNNClassifier(nn.Module):
                 m.bias.data.fill_(0.01)
 
     def forward(
-        self, 
-        x, 
-        l
+        self, x, l
     ):
         # 1. Conv forward
         x = self.conv(x)
@@ -96,6 +93,7 @@ class ConvRNNClassifier(nn.Module):
         # 2. Rnn forward
         # max pooling, time dim reduce by 8 times
         l = l//8
+        l[l==0] = 1
         if l[0] != 0:
             x = pack_padded_sequence(
                 x, 
@@ -187,9 +185,7 @@ class RNNClassifier(nn.Module):
                 m.bias.data.fill_(0.01)
 
     def forward(
-        self, 
-        x, 
-        l
+        self, x, l
     ):
         # 1. Rnn forward
         if l[0] != 0:
@@ -216,6 +212,42 @@ class RNNClassifier(nn.Module):
             # Average pooling
             x = torch.mean(x, axis=1)
         # 3. classifier
+        preds = self.classifier(x)
+        return preds, x
+
+class DNNClassifier(nn.Module):
+    def __init__(
+        self, 
+        num_classes: int,       # Number of classes 
+        input_dim: int,         # feature input dim
+    ):
+        super(DNNClassifier, self).__init__()
+        self.dropout_p = 0.1
+        
+        # classifier head
+        self.classifier = nn.Sequential(
+            nn.Linear(input_dim, 128),
+            nn.ReLU(),
+            nn.Dropout(self.dropout_p),
+            nn.Linear(128, num_classes)
+        )
+        
+        # Projection head
+        self.init_weight()
+
+    def init_weight(self):
+        for m in self._modules:
+            if type(m) == nn.Linear:
+                torch.nn.init.xavier_uniform(m.weight)
+                m.bias.data.fill_(0.01)
+            if type(m) == nn.Conv1d:
+                torch.nn.init.xavier_uniform(m.weight)
+                m.bias.data.fill_(0.01)
+
+    def forward(
+        self, x
+    ):
+        # 1. classifier
         preds = self.classifier(x)
         return preds, x
 

@@ -13,15 +13,14 @@ from pathlib import Path
 from copy import deepcopy
 
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'model'))
-sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'dataloader'))
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'trainers'))
 sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'constants'))
+sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'dataloader'))
 
 import constants
 from server_trainer import Server
-from mm_models import SERClassifier
+from mm_models import DNNClassifier, RNNClassifier
 from dataload_manager import DataloadManager
-
 
 # trainer
 from fed_rs_trainer import ClientFedRS
@@ -53,28 +52,31 @@ def parse_args():
             key, val = line.strip().split('=')
             path_conf[key] = val.replace("\"", "")
 
-    parser = argparse.ArgumentParser(description='FedMultimoda experiments')
-    parser.add_argument(
-        '--data_dir', 
-        default=path_conf["output_dir"],
-        type=str, 
-        help='output feature directory'
+    parser = argparse.ArgumentParser(
+        description='FedMultimodal experiments'
     )
     
     parser.add_argument(
-        '--audio_feat', 
-        default='mfcc',
-        type=str,
-        help="audio feature name",
+        '--data_dir', 
+        default=path_conf['output_dir'],
+        type=str, 
+        help='output feature directory'
     )
     
     parser.add_argument(
         '--text_feat', 
         default='mobilebert',
         type=str,
-        help="text embedding feature name",
+        help="text feature name",
     )
     
+    parser.add_argument(
+        '--img_feat', 
+        default='mobilenet_v2',
+        type=str,
+        help="image feature name",
+    )
+
     parser.add_argument(
         '--att', 
         type=bool, 
@@ -98,7 +100,7 @@ def parse_args():
     
     parser.add_argument(
         '--learning_rate', 
-        default=0.01,
+        default=0.1,
         type=float,
         help="learning rate",
     )
@@ -108,13 +110,6 @@ def parse_args():
         default=0.05,
         type=float,
         help="learning rate",
-    )
-
-    parser.add_argument(
-        '--mu',
-        type=float, 
-        default=0.001,
-        help='Fed prox term'
     )
     
     parser.add_argument(
@@ -130,11 +125,25 @@ def parse_args():
         type=int,
         help="total training rounds",
     )
+    
+    parser.add_argument(
+        '--mu',
+        type=float, 
+        default=0.001,
+        help='Fed prox term'
+    )
+
+    parser.add_argument(
+        '--hid_size',
+        type=int, 
+        default=64,
+        help='RNN hidden size dim'
+    )
 
     parser.add_argument(
         '--test_frequency', 
         default=1,
-        type=int,
+        type=str,
         help="perform test frequency",
     )
     
@@ -167,12 +176,11 @@ def parse_args():
     )
     
     parser.add_argument(
-        '--hid_size',
-        type=int, 
-        default=64,
-        help='RNN hidden size dim'
+        "--alpha",
+        type=float,
+        default=1.0,
+        help="alpha in direchlet distribution",
     )
-
     
     parser.add_argument(
         "--missing_modality",
@@ -220,8 +228,7 @@ def parse_args():
         '--label_nosiy', 
         type=bool, 
         default=False,
-        help='clean label or nosiy label'
-    )
+        help='clean label or nosiy label')
     
     parser.add_argument(
         "--en_label_nosiy",
@@ -236,18 +243,18 @@ def parse_args():
         default=0.1,
         help='nosiy level for labels; 0.9 means 90% wrong'
     )
-    
+
     parser.add_argument(
         '--modality', 
         type=str, 
-        default='multimodal',
+        default='image',
         help='modality type'
     )
     
     parser.add_argument(
         "--dataset", 
         type=str, 
-        default="meld",
+        default="crisis-mmd",
         help='data set name'
     )
     args = parser.parse_args()
@@ -260,8 +267,7 @@ if __name__ == '__main__':
 
     # data manager
     dm = DataloadManager(args)
-    dm.get_text_feat_path()
-    dm.get_simulation_setting()
+    dm.get_simulation_setting(alpha=args.alpha)
     
     # find device
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
@@ -282,50 +288,47 @@ if __name__ == '__main__':
     # set dataloaders
     dataloader_dict = dict()
     logging.info('Reading Data')
-
     for client_id in tqdm(dm.client_ids):
-        audio_dict = dm.load_audio_feat(
-            client_id=client_id
-        )
-        text_dict = dm.load_text_feat(
-            client_id=client_id
-        )
-
+        # load image features
+        if args.modality == 'image':
+            data_dict = dm.load_img_feat(
+                client_id=client_id
+            )
+        elif args.modality == 'text':
+            # load text features
+            data_dict = dm.load_text_feat(
+                client_id=client_id
+            )
         dm.get_label_dist(
-            text_dict, 
+            data_dict, 
             client_id
         )
-
         shuffle = False if client_id in ['dev', 'test'] else True
         client_sim_dict = None if client_id in ['dev', 'test'] else dm.get_client_sim_dict(client_id=client_id)
         dataloader_dict[client_id] = dm.set_dataloader(
-            audio_dict, 
-            text_dict, 
-            shuffle=shuffle,
-            client_sim_dict=client_sim_dict,
-            default_feat_shape_a=np.array([1000, constants.feature_len_dict["mfcc"]]),
-            default_feat_shape_b=np.array([10, constants.feature_len_dict["mobilebert"]])
+            data_dict,
+            shuffle=shuffle
         )
-        
-    # pdb.set_trace()
+
     # We perform 5 fold experiments with 5 seeds
     for fold_idx in range(1, 6):
         # number of clients
         client_ids = [client_id for client_id in dm.client_ids if client_id not in ['dev', 'test']]
         num_of_clients = len(client_ids)
+
         # set seeds
         set_seed(8*fold_idx)
         # loss function
         criterion = nn.NLLLoss().to(device)
         # Define the model
-        global_model = SERClassifier(
-            num_classes=constants.num_class_dict[args.dataset],
-            audio_input_dim=constants.feature_len_dict[args.audio_feat],
-            text_input_dim=constants.feature_len_dict[args.text_feat],
-            d_hid=args.hid_size,
-            en_att=args.att,
-            att_name=args.att_name
-        )
+        if args.modality == 'text':
+            global_model = RNNClassifier(
+                num_classes=constants.num_class_dict[args.dataset],
+                input_dim=constants.feature_len_dict["mobilebert"],
+                d_hid=args.hid_size,
+                en_att=args.att,
+                att_name=args.att_name
+            )
         global_model = global_model.to(device)
 
         # initialize server
@@ -336,28 +339,21 @@ if __name__ == '__main__':
             criterion=criterion,
             client_ids=client_ids
         )
-
         server.initialize_log(fold_idx)
-        server.sample_clients(
-            num_of_clients, 
-            sample_rate=args.sample_rate
-        )
+        server.sample_clients(num_of_clients, sample_rate=args.sample_rate)
+        server.get_num_params()
 
         # save json path
         save_json_path = Path(os.path.realpath(__file__)).parents[2].joinpath(
-            'result', 
+            'result',
             args.fed_alg,
             args.dataset,
             server.feature,
             server.att,
             server.model_setting_str
         )
-        Path.mkdir(
-            save_json_path, 
-            parents=True, 
-            exist_ok=True
-        )
-
+        Path.mkdir(save_json_path, parents=True, exist_ok=True)
+        
         server.save_json_file(
             dm.label_dist_dict, 
             save_json_path.joinpath('label.json')
@@ -365,7 +361,6 @@ if __name__ == '__main__':
         
         # set seeds again
         set_seed(8*fold_idx)
-
         # Training steps
         for epoch in range(int(args.num_epochs)):
             # define list varibles that saves the weights, loss, num_sample, etc.
@@ -379,7 +374,6 @@ if __name__ == '__main__':
                 if dataloader is None:
                     skip_client_ids.append(client_id)
                     continue
-                
                 # initialize client object
                 client = Client(
                     args, 
@@ -391,6 +385,7 @@ if __name__ == '__main__':
                     num_class=constants.num_class_dict[args.dataset]
                 )
 
+                # train
                 if args.fed_alg == 'scaffold':
                     client.set_control(
                         server_control=copy.deepcopy(server.server_control), 
@@ -399,7 +394,10 @@ if __name__ == '__main__':
                     client.update_weights()
 
                     # server append updates
-                    server.set_client_control(client_id, copy.deepcopy(client.client_control))
+                    server.set_client_control(
+                        client_id, 
+                        copy.deepcopy(client.client_control)
+                    )
                     server.save_train_updates(
                         copy.deepcopy(client.get_parameters()), 
                         client.result['sample'], 
@@ -418,23 +416,23 @@ if __name__ == '__main__':
             
             # logging skip client
             logging.info(f'Client Round: {epoch}, Skip client {skip_client_ids}')
-
+            
             # 2. aggregate, load new global weights
             if len(server.num_samples_list) == 0: continue
             server.average_weights()
             logging.info('---------------------------------------------------------')
             server.log_classification_result(
                 data_split='train', 
-                metric='uar'
+                metric='f1'
             )
-            if epoch % args.test_frequency == 0:
+            if epoch % args.test_frequency == 0 or epoch == int(args.num_epochs)-1:
                 with torch.no_grad():
                     # 3. Perform the validation on dev set
                     server.inference(dataloader_dict['dev'])
                     server.result_dict[epoch]['dev'] = server.result
                     server.log_classification_result(
                         data_split='dev', 
-                        metric='uar'
+                        metric='f1'
                     )
 
                     # 4. Perform the test on holdout set
@@ -442,18 +440,16 @@ if __name__ == '__main__':
                     server.result_dict[epoch]['test'] = server.result
                     server.log_classification_result(
                         data_split='test', 
-                        metric='uar'
+                        metric='f1'
                     )
                 
                 logging.info('---------------------------------------------------------')
-                server.log_epoch_result(
-                    metric='uar'
-                )
+                server.log_epoch_result(metric='f1')
             logging.info('---------------------------------------------------------')
 
         # Performance save code
         save_result_dict[f'fold{fold_idx}'] = server.summarize_dict_results()
-
+        
         # output to results
         server.save_json_file(
             save_result_dict, 
@@ -462,7 +458,7 @@ if __name__ == '__main__':
 
     # Calculate the average of the 5-fold experiments
     save_result_dict['average'] = dict()
-    for metric in ['uar', 'acc', 'top5_acc']:
+    for metric in ['f1', 'acc', 'top5_acc']:
         result_list = list()
         for key in save_result_dict:
             if metric not in save_result_dict[key]: continue
