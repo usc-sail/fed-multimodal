@@ -37,8 +37,8 @@ Then pip install the package:
 pip install -e .
 ```
 
-### Quick Start -- UCI-HAR Example
-Here we provide an example to quickly start with the experiments, and reproduce the UCI-HAR results from the paper. We set the fixed seed for data partitioning, training client sampling, so ideally you would get the exact results (see Table 4) as reported from our paper.
+### Quick Start -- UCI-HAR Example (Acc. and Gyro)
+Here we provide an example to quickly start with the experiments, and reproduce the UCI-HAR results from the paper. We set the fixed seed for data partitioning, training client sampling, so ideally you would get the exact results (see Table 4, attention-based column) as reported from our paper.
 
 
 #### 0. Download data: The data will be under data/uci-har by default. 
@@ -95,15 +95,21 @@ cd experiment/uci-har
 bash run_base.sh
 ```
 
-#### Results for executing the above
+#### 5. Run ablation experiments, e.g Missing Modality
+```
+cd experiment/uci-har
+bash run_mm.sh
+```
+
+#### Baseline results for executing the above
 Dataset | Modality | Paper | Label Size | Num. of Clients | Split | Alpha | FL Algorithm | F1 (Federated) | Learning Rate | Global Epoch |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:| :---:| :---:|
-UCI-HAR | Acc+Gyro | [UCI-Data](https://archive.ics.uci.edu/ml/datasets/human+activity+recognition+using+smartphones) | 6 | 105 | Natural+Manual | 5.0 <br> 5.0 <br> 0.1 <br> 0.1 |  FedAvg <br> FedOpt <br> FedAvg <br> FedOpt | 77.74% <br> 76.66% <br> 85.17% <br> 79.80% | 0.05 | 200 |
+UCI-HAR | Acc+Gyro | [UCI-Data](https://archive.ics.uci.edu/ml/datasets/human+activity+recognition+using+smartphones) | 6 | 105 | Natural+Manual | 5.0 <br> 5.0 <br> 0.1 <br> 0.1 |  FedAvg <br> FedOpt <br> FedAvg <br> FedOpt | 77.74% <br> 85.17% <br> 76.66% <br> 79.80% | 0.05 | 200 |
 
 
 
-Feel free to contact us!
+Feel free to contact us or open issue!
 
-Tiantian Feng, University of Southern California
+Corresponding Author: Tiantian Feng, University of Southern California
 
 Email: tiantiaf@usc.edu

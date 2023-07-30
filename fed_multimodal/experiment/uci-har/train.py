@@ -10,14 +10,12 @@ import copy, time, pickle, shutil, sys, os, pdb
 
 from tqdm import tqdm
 from pathlib import Path
-from copy import deepcopy
 
 from fed_multimodal.constants import constants
 from fed_multimodal.trainers.server_trainer import Server
 from fed_multimodal.model.mm_models import HARClassifier
 from fed_multimodal.dataloader.dataload_manager import DataloadManager
 
-# trainer
 from fed_multimodal.trainers.fed_rs_trainer import ClientFedRS
 from fed_multimodal.trainers.fed_avg_trainer import ClientFedAvg
 from fed_multimodal.trainers.scaffold_trainer import ClientScaffold

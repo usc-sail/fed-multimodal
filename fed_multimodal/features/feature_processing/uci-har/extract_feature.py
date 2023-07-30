@@ -13,8 +13,6 @@ import os.path as osp
 
 from tqdm import tqdm
 from pathlib import Path
-
-# sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[1])))
 from fed_multimodal.features.feature_processing.feature_manager import FeatureManager
 
 

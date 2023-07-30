@@ -4,10 +4,12 @@ import pdb
 import json
 import os, sys
 import argparse
+
 from pathlib import Path
 
 import fed_multimodal.constants.constants as constants
 from fed_multimodal.features.simulation_features.simulation_manager import SimulationManager
+
 
 # Define logging console
 import logging
@@ -18,6 +20,7 @@ logging.basicConfig(
 )
 
 def parse_args():
+    
     # read path config files
     path_conf = dict()
     with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
@@ -36,13 +39,6 @@ def parse_args():
         default=path_conf["output_dir"],
         type=str, 
         help='output feature directory'
-    )
-    
-    parser.add_argument(
-        "--alpha",
-        type=float,
-        default=1.0,
-        help="alpha in direchlet distribution",
     )
     
     parser.add_argument(
@@ -65,7 +61,6 @@ def parse_args():
         default=0.5,
         help='missing rate for modality; 0.9 means 90%% missing'
     )
-    
     
     parser.add_argument(
         "--missing_label",
@@ -111,7 +106,7 @@ def parse_args():
     
     parser.add_argument(
         "--dataset", 
-        default="uci-har"
+        default="ptb-xl"
     )
     args = parser.parse_args()
     return args
@@ -125,9 +120,9 @@ if __name__ == '__main__':
     
     # logging information
     if args.missing_modality:
-        logging.info(f'simulation missing_modality, alpha {args.alpha}, missing rate {args.missing_modailty_rate*100}%')
+        logging.info(f'simulation missing_modality, missing rate {args.missing_modailty_rate*100}%')
     if args.label_nosiy:
-        logging.info(f'simulation label_nosiy, alpha {args.alpha}, label noise rate {args.label_nosiy_level*100}%')
+        logging.info(f'simulation label_nosiy, label noise rate {args.label_nosiy_level*100}%')
     if args.missing_label:
         logging.info(f'simulation missing_label, label noise rate {args.missing_label_rate*100}%')
 
@@ -141,8 +136,8 @@ if __name__ == '__main__':
         parents=True, 
         exist_ok=True
     )
-    
-    partition_dict = sm.fetch_partition(alpha=args.alpha)
+
+    partition_dict = sm.fetch_partition()
     for client_idx, client in enumerate(partition_dict):
         partition_dict[client] = sm.simulation(
             partition_dict[client], 
@@ -150,7 +145,7 @@ if __name__ == '__main__':
             class_num=constants.num_class_dict[args.dataset]
         )
         
-    sm.get_simulation_setting(alpha=args.alpha)
+    sm.get_simulation_setting()
     if len(sm.setting_str) != 0:
         jsonString = json.dumps(partition_dict, indent=4)
         jsonFile = open(str(output_data_path.joinpath(f'{sm.setting_str}.json')), "w")
