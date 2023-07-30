@@ -1,5 +1,5 @@
 
-### How to run PTB-XL Dataset in FedMultimodal (Acc. and Gyro)
+### How to run PTB-XL Dataset in FedMultimodal (I-AVF and V1-V6)
 Here we provide an example to quickly start with the experiments, and reproduce the PTB-XL results from the paper. We set the fixed seed for data partitioning, training client sampling, so ideally you would get the exact results (see Table 4, attention-based column) as reported from our paper.
 
 
@@ -54,7 +54,7 @@ default missing modality simulation returns missing modality at 10%, 20%, 30%, 4
 
 ```
 cd features/simulation_features/ptb-xl
-# output/mm/kuhar/{client_id}_{mm_rate}.json
+# output/mm/ptb-xl/{client_id}_{mm_rate}.json
 
 # missing modalities
 bash run_mm.sh
@@ -78,7 +78,7 @@ bash run_mm.sh
 ```
 
 #### Baseline results for executing the above - We are aware that previous studies have also reported AUC, feel free to add evaluation metric using AUC
-Dataset | Modality | Paper | Label Size | Num. of Clients | Split | Alpha | FL Algorithm | Macro-F1 (Federated) | Learning Rate | Global Epoch |
+Dataset | Modality | Link | Label Size | Num. of Clients | Split | Alpha | FL Algorithm | Macro-F1 (Federated) | Learning Rate | Global Epoch |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:| :---:| :---:|
 PTB-XL | I-AVF/V1-V6 | [PTB-XL](https://physionet.org/content/ptb-xl/1.0.3/) | 33 |  | Natural | - |  FedAvg <br> FedOpt | 61.88% <br> 62.42% | 0.05 | 200 |
 
