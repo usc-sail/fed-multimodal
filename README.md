@@ -96,7 +96,7 @@ bash run_base.sh
 ```
 
 #### Results for executing the above
-Dataset | Modality | Paper | Label Size | Num. of Clients | Split | Alpha | FL Algorithm | Best UAR (Federated) | Learning Rate | Global Epoch |
+Dataset | Modality | Paper | Label Size | Num. of Clients | Split | Alpha | FL Algorithm | F1 (Federated) | Learning Rate | Global Epoch |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:| :---:| :---:|
 UCI-HAR | Acc+Gyro | [UCI-Data](https://archive.ics.uci.edu/ml/datasets/human+activity+recognition+using+smartphones) | 6 | 105 | Natural+Manual | 5.0 <br> 5.0 <br> 0.1 <br> 0.1 |  FedAvg <br> FedOpt <br> FedAvg <br> FedOpt | 77.74% <br> 76.66% <br> 85.17% <br> 79.80% | 0.05 | 200 |
 
