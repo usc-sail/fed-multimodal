@@ -38,7 +38,7 @@ pip install -e .
 ```
 
 ### Quick Start -- UCI-HAR Example
-Here we provide an example to quickly start with the experiments, and reproduce the UCI-HAR results from the paper. We set the fixed seed for data partitioning, training client sampling, so ideally you would get the exact results as reported from our paper.
+Here we provide an example to quickly start with the experiments, and reproduce the UCI-HAR results from the paper. We set the fixed seed for data partitioning, training client sampling, so ideally you would get the exact results (see Table 4) as reported from our paper.
 
 
 #### 0. Download data: The data will be under data/uci-har by default. 
@@ -53,12 +53,14 @@ cd ..
 
 #### 1. Partition the data
 
-alpha specifies the non-iidness of the partition, the lower, the higher data heterogeneity.
+alpha specifies the non-iidness of the partition, the lower, the higher data heterogeneity. As each subject performs the same amount activities, we partition each subject data into 5 sub-clients.
 
 ```
 python3 features/data_partitioning/uci-har/data_partition.py --alpha 0.1 --num_clients 5
 python3 features/data_partitioning/uci-har/data_partition.py --alpha 5.0 --num_clients 5
 ```
+
+The return data is a list, each item containing [key, file_name, label]
 
 #### 2. Feature extraction
 
@@ -82,6 +84,10 @@ cd features/simulation_features/uci-har
 bash run_mm.sh
 cd ../../../
 ```
+The return data is a list, each item containing:
+[missing_modalityA, missing_modalityB, new_label, missing_label]
+
+missing_modalityA and missing_modalityB indicates the flag of missing modality, new_label indicates erroneous label, and missing label indicates if the label is missing for a data.
 
 #### 4. Run base experiments (FedAvg, FedOpt, FedProx, ...)
 ```
