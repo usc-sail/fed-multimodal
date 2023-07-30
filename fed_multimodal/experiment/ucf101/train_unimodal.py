@@ -262,7 +262,7 @@ if __name__ == '__main__':
     dm.get_simulation_setting()
     
     # find device
-    device = torch.device("cuda:0") if torch.cuda.is_available() else "cpu"
+    device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     if torch.cuda.is_available(): print('GPU available, use GPU')
 
     save_result_dict = dict()
@@ -355,7 +355,9 @@ if __name__ == '__main__':
         save_json_path = Path(os.path.realpath(__file__)).parents[2].joinpath(
             'result',
             args.fed_alg,
-            args.dataset, 
+            args.dataset,
+            server.feature,
+            server.att,
             server.model_setting_str
         )
         Path.mkdir(save_json_path, parents=True, exist_ok=True)
