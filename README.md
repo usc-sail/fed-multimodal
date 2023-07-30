@@ -1,10 +1,10 @@
-# FedMultimodal
-#### FedMutimodal is an open source project for researchers exploring multimodal applications in Federated Learning setup
+# FedMultimodal - 2023 KDD ADS
+#### FedMutimodal [[Paper Link](https://arxiv.org/pdf/2306.09486.pdf)] is an open source project for researchers exploring multimodal applications in Federated Learning setup. FedMultimodal was accepted to 2023 KDD ADS track. 
 
 The framework figure:
 
 <div align="center">
- <img src="img/FedMultimodal.jpg" width="750px">
+ <img src="fed_multimodal/img/FedMultimodal.jpg" width="750px">
 </div>
 
 
@@ -13,40 +13,88 @@ The framework figure:
     * Speech Emotion Recognition
     * Multimedia Action Recognition
     * Human Activity Recognition
-* #### Cross-silo Applications (Mainly Medical Settings)
-    * Sleep Monitoring
+    * Social Media
+* #### Cross-silo Applications (e.g. Medical Settings)
     * ECG classification
-    * Medical Imaging
+    * Ego-4D (To Appear)
+    * Medical Imaging (To Appear)
 
-## Cross-Device Applications
-### Speech Emotion Recognition (Natural Split)
+### Installation
+To begin with, please clone this repo:
+```
+git clone git@github.com:usc-sail/fed-multimodal.git
+```
 
-Dataset | Modality | Paper | Label Size | Num. of Clients | Split | Best UAR (Federated) | Learning Rate | Global Epoch
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-MELD | A+T+V | [arxiv](https://arxiv.org/abs/1810.02508) | 4 | 86 | Natural | Bert:55.51% <br> Mobilebert:52.42% | 0.01 | 300
-MSP-Podcast | A+T(ASR) | [TAFFC'19](https://ecs.utdallas.edu/research/researchlabs/msp-lab/publications/Lotfian_2019_3.pdf) | 6 | >200 |    |
+To install the conda environment:
+```
+cd fed-multimodal
+conda create --name fed-multimodal python=3.9
+conda activate fed-multimodal
+```
+
+Then pip install the package:
+```
+pip install -e .
+```
+
+### Quick Start -- UCI-HAR Example
+Here we provide an example to quickly start with the experiments, and reproduce the UCI-HAR results from the paper. We set the fixed seed for data partitioning, training client sampling, so ideally you would get the exact results as reported from our paper.
 
 
-### Multimedia Action Recognition (Manual Split)
+#### 0. Download data: The data will be under data/uci-har by default. 
 
-Dataset | Modality | Paper | Label Size | Num. of Clients | Split | Alpha | Best Top-1 Acc (Federated) | Best Top-5 Acc (Federated) | Learning Rate | Global Epoch | Fold
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-UCF101 | A+V | [arxiv](https://arxiv.org/abs/1212.0402) | 51 | 200 | Manual | 1.0 <br> 0.25 <br> 0.1 | 69.87% <br> 68.25% <br> 66.42% | 94.57% <br> 93.61% <br> 93.81% | 0.1 <br> | 300 <br> | 3 folds from dataset
-MIT10 (Subset of MIT) | A+V | [arxiv](https://arxiv.org/abs/1801.03150) | 10 | 200 | Manual | 1.0 <br> 0.25 <br> 0.1 | 55.90% <br> 50.56% <br> 45.51% | 93.89% <br> 92.87% <br> 85.11% | 0.1 | 300 | 3 folds with 3 seeds
-MIT51 (Subset of MIT) | A+V | [arxiv](https://arxiv.org/abs/1801.03150) | 51 | 1000 | Manual | 1.0 <br> 0.25 <br> 0.1 | 34.17% <br> 32.48% <br> 32.17% | 64.76% <br> 63.71% <br> 62.04% | 0.1 | 300 | 3 folds with 3 seeds
+You can modify the data path in system.cfg to the desired path.
 
-### Human Acitivity Recognition (Manual Split/Natural Split)
-Dataset | Modality | Paper | Label Size | Num. of Clients | Split | Alpha | Best UAR (Federated) | Learning Rate | Global Epoch | Fold |
+```
+cd data
+bash download_uci_har.sh
+cd ..
+```
+
+#### 1. Partition the data
+
+alpha specifies the non-iidness of the partition, the lower, the higher data heterogeneity.
+
+```
+python3 features/data_partitioning/uci-har/data_partition.py --alpha 0.1 --num_clients 5
+python3 features/data_partitioning/uci-har/data_partition.py --alpha 5.0 --num_clients 5
+```
+
+#### 2. Feature extraction
+
+For UCI-HAR dataset, the feature extraction mainly handles normalization.
+
+```
+python3 features/feature_processing/uci-har/extract_feature.py --alpha 0.1
+python3 features/feature_processing/uci-har/extract_feature.py --alpha 5.0
+```
+
+
+#### 3. (Optional) Simulate missing modality conditions
+
+default missing modality simulation returns missing modality at 10%, 20%, 30%, 40%, 50%
+
+```
+cd features/simulation_features/uci-har
+# output/mm/ucihar/{client_id}_{mm_rate}.json
+
+# missing modalities
+bash run_mm.sh
+cd ../../../
+```
+
+#### 4. Run base experiments (FedAvg, FedOpt, FedProx, ...)
+```
+cd experiment/uci-har
+bash run_base.sh
+```
+
+#### Results for executing the above
+Dataset | Modality | Paper | Label Size | Num. of Clients | Split | Alpha | FL Algorithm | Best UAR (Federated) | Learning Rate | Global Epoch |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:| :---:| :---:|
-UCI-HAR | Acc+Gyro | [UCI-Data](https://archive.ics.uci.edu/ml/datasets/human+activity+recognition+using+smartphones) | 6 | 210 | Natural+Manual | 1.0 <br> 0.25 <br> 0.1 | 78.60% <br> 78.27% <br> 76.62% | 0.1 | 300 | 5 folds with 5 seeds
-Extrasensory | Acc+Gyro | [UCSD-Extrasensory](http://extrasensory.ucsd.edu/) | 6 | 40> | Natural | - | 31.23% | 0.1 | 300 | 5 folds with 5 seeds
+UCI-HAR | Acc+Gyro | [UCI-Data](https://archive.ics.uci.edu/ml/datasets/human+activity+recognition+using+smartphones) | 6 | 105 | Natural+Manual | 5.0 <br> 5.0 <br> 0.1 <br> 0.1 |  FedAvg <br> FedOpt <br> FedAvg <br> FedOpt | 77.74% <br> 76.66% <br> 85.17% <br> 79.80% | 0.05 | 200 |
 
-## Cross-silo Applications
 
-### ECG Classification (Manual Split/Natural Split)
-Dataset | Modality | Paper | Label Size | Num. of Clients | Split | Alpha | Best Macro-F1 (Federated) | Learning Rate | Global Epoch | Fold |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-PTB-xl | I,II,III,AVL,AVR,AVF+ V1,V2,V3,V4,V5,V6 | [Sci. Data](https://www.nature.com/articles/s41597-020-0495-6) | 5 | 35 (<10 recording Discard) | Natural | - | 62.94% | 0.05 | 200 | 5 folds with 5 seeds
 
 Feel free to contact us!
 
