@@ -79,5 +79,5 @@ bash run_mm.sh
 #### Baseline results for executing the above
 Dataset | Modality | Link | Label Size | Num. of Clients | Split | Alpha | FL Algorithm | UAR (Federated) | Learning Rate | Global Epoch |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:| :---:| :---:|
-Crema-D | Video/Audio | [Crema-D-Data](https://crisisnlp.qcri.org/crisismmd) | 4 | ~70 | Natural | - |  FedAvg <br> FedOpt | 8.93% <br> 27.59% | 0.05 | 200 |
+Crema-D | Video/Audio | [Crema-D-Data](https://github.com/CheyneyComputerScience/CREMA-D) | 4 | ~70 per fold | Natural | - |  FedAvg <br> FedOpt | 61.66% <br> 62.66% | 0.05 | 200 |
 
