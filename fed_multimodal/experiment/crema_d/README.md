@@ -12,7 +12,7 @@ bash download_cremad.sh
 cd ..
 ```
 
-Data will be under data/creama-d
+Data will be under data/creama_d
 
 #### 1. Partition the data
 
