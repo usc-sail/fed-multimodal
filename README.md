@@ -124,3 +124,26 @@ Feel free to contact us or open issue!
 Corresponding Author: Tiantian Feng, University of Southern California
 
 Email: tiantiaf@usc.edu
+
+### Related Citation
+
+```
+@article{feng2023fedmultimodal,
+  title={FedMultimodal: A Benchmark For Multimodal Federated Learning},
+  author={Feng, Tiantian and Bose, Digbalay and Zhang, Tuo and Hebbar, Rajat and Ramakrishna, Anil and Gupta, Rahul and Zhang, Mi and Avestimehr, Salman and Narayanan, Shrikanth},
+  journal={arXiv preprint arXiv:2306.09486},
+  year={2023}
+}
+```
+
+FedMultimodal also uses the code from our previous work:
+```
+@inproceedings{zhang2023fedaudio,
+  title={Fedaudio: A federated learning benchmark for audio tasks},
+  author={Zhang, Tuo and Feng, Tiantian and Alam, Samiul and Lee, Sunwoo and Zhang, Mi and Narayanan, Shrikanth S and Avestimehr, Salman},
+  booktitle={ICASSP 2023-2023 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
+  pages={1--5},
+  year={2023},
+  organization={IEEE}
+}
+```
