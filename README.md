@@ -16,7 +16,7 @@ The framework figure:
     * Emotion Recognition [[CREMA-D](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/crema_d)] [[Meld](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/meld)]
     * Multimedia Action Recognition [[UCF-101](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/ucf101)] [[MiT-51](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/mit51)]
     * Human Activity Recognition [[UCI-HAR](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/uci-har)] [[KU-HAR](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/ku-har)] 
-    * Social Media [[Crisis-MMD](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/crisis-mmd)] [Hateful-Memes]
+    * Social Media [[Crisis-MMD](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/crisis-mmd)] [[Hateful-Memes](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/hateful_memes)]
 * #### Cross-silo Applications (e.g. Medical Settings)
     * ECG classification [[PTB-XL](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/ptb-xl)]
     * Ego-4D (To Appear)
