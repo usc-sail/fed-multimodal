@@ -14,7 +14,7 @@ The framework figure:
 ## Applications supported
 * #### Cross-Device Applications
     * Emotion Recognition [[CREMA-D](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/crema_d)] [[Meld](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/meld)]
-    * Multimedia Action Recognition [[UCF-101](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/ucf101)] [Moments in Times]
+    * Multimedia Action Recognition [[UCF-101](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/ucf101)] [[MiT-51](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/mit51)]
     * Human Activity Recognition [[UCI-HAR](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/uci-har)] [[KU-HAR](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/ku-har)] 
     * Social Media [[Crisis-MMD](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/crisis-mmd)] [Hateful-Memes]
 * #### Cross-silo Applications (e.g. Medical Settings)
