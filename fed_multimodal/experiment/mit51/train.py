@@ -1,4 +1,3 @@
-import json
 import torch
 import random
 import numpy as np
@@ -10,22 +9,15 @@ import copy, time, pickle, shutil, sys, os, pdb
 
 from tqdm import tqdm
 from pathlib import Path
-from copy import deepcopy
 
-sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'model'))
-sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'dataloader'))
-sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'trainers'))
-sys.path.append(os.path.join(str(Path(os.path.realpath(__file__)).parents[2]), 'constants'))
+from fed_multimodal.constants import constants
+from fed_multimodal.trainers.server_trainer import Server
+from fed_multimodal.model.mm_models import MMActionClassifier
+from fed_multimodal.dataloader.dataload_manager import DataloadManager
 
-import constants
-from server_trainer import Server
-from mm_models import MMActionClassifier
-from dataload_manager import DataloadManager
-
-# trainer
-from fed_rs_trainer import ClientFedRS
-from fed_avg_trainer import ClientFedAvg
-from scaffold_trainer import ClientScaffold
+from fed_multimodal.trainers.fed_rs_trainer import ClientFedRS
+from fed_multimodal.trainers.fed_avg_trainer import ClientFedAvg
+from fed_multimodal.trainers.scaffold_trainer import ClientScaffold
 
 # define logging console
 import logging
@@ -45,10 +37,26 @@ def set_seed(seed):
     random.seed(seed)
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='FedMultimoda experiments')
+    # read path config files
+    path_conf = dict()
+    with open(str(Path(os.path.realpath(__file__)).parents[2].joinpath('system.cfg'))) as f:
+        for line in f:
+            key, val = line.strip().split('=')
+            path_conf[key] = val.replace("\"", "")
+
+    # If default setting
+    if path_conf["data_dir"] == ".":
+        path_conf["data_dir"] = str(Path(os.path.realpath(__file__)).parents[2].joinpath('data'))
+    if path_conf["output_dir"] == ".":
+        path_conf["output_dir"] = str(Path(os.path.realpath(__file__)).parents[2].joinpath('output'))
+
+    parser = argparse.ArgumentParser(
+        description='FedMultimodal experiments'
+    )
+    
     parser.add_argument(
         '--data_dir', 
-        default='/media/data/projects/speech-privacy/fed-multimodal/',
+        default=path_conf['output_dir'],
         type=str, 
         help='output feature directory'
     )

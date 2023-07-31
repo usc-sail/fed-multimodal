@@ -1,4 +1,4 @@
-# Author: Tiantian Feng 
+# Author: Tiantian Feng
 # USC SAIL lab, tiantiaf@usc.edu
 import pdb
 import json
@@ -19,7 +19,6 @@ logging.basicConfig(
 )
 
 def parse_args():
-    
     # read path config files
     path_conf = dict()
     with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
@@ -108,9 +107,13 @@ def parse_args():
         '--label_nosiy_level', 
         type=float, 
         default=0.1,
-        help='nosiy level for labels; 0.9 means 90% wrong')
+        help='nosiy level for labels; 0.9 means 90% wrong'
+    )
     
-    parser.add_argument("--dataset", default="ucf101")
+    parser.add_argument(
+        "--dataset", 
+        default="mit51"
+    )
     args = parser.parse_args()
     return args
 
@@ -122,40 +125,34 @@ if __name__ == '__main__':
     
     # initialize simulation manager
     sm = SimulationManager(args)
-    
+
     # logging information
     if args.missing_modality:
         logging.info(f'simulation missing_modality, alpha {args.alpha}, missing rate {args.missing_modailty_rate*100}%')
     if args.label_nosiy:
         logging.info(f'simulation label_nosiy, alpha {args.alpha}, label noise rate {args.label_nosiy_level*100}%')
-    if args.missing_label:
-        logging.info(f'simulation missing_label, alpha {args.alpha}, label noise rate {args.missing_label_rate*100}%')
     
     # save for later uses
-    for fold_idx in range(3):
-        # define output path
-        output_data_path = Path(args.output_dir).joinpath(
-            'simulation_feature', 
-            args.dataset, 
-            f'fold{fold_idx+1}'
-        )
-        Path.mkdir(output_data_path, parents=True, exist_ok=True)
-        partition_dict = sm.fetch_partition(
-            fold_idx+1, 
-            alpha=args.alpha
+    output_data_path = Path(args.output_dir).joinpath(
+        'simulation_feature', 
+        args.dataset
+    )
+    Path.mkdir(output_data_path, parents=True, exist_ok=True)
+    partition_dict = sm.fetch_partition(
+        alpha=args.alpha
+    )
+    
+    for client_idx, client in enumerate(partition_dict):
+        partition_dict[client] = sm.simulation(
+            partition_dict[client], 
+            seed=client_idx,
+            class_num=constants.num_class_dict[args.dataset]
         )
         
-        for client_idx, client in enumerate(partition_dict):
-            partition_dict[client] = sm.simulation(
-                partition_dict[client], 
-                seed=client_idx
-            )
-            
-        sm.get_simulation_setting(alpha=args.alpha)
-        if len(sm.setting_str) != 0:
-            jsonString = json.dumps(partition_dict, indent=4)
-            jsonFile = open(str(output_data_path.joinpath(f'{sm.setting_str}.json')), "w")
-            jsonFile.write(jsonString)
-            jsonFile.close()
-
-            
+    # output simulation
+    sm.get_simulation_setting(alpha=args.alpha)
+    if len(sm.setting_str) != 0:
+        jsonString = json.dumps(partition_dict, indent=4)
+        jsonFile = open(str(output_data_path.joinpath(f'{sm.setting_str}.json')), "w")
+        jsonFile.write(jsonString)
+        jsonFile.close()

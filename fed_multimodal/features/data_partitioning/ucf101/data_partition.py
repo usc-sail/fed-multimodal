@@ -113,14 +113,14 @@ if __name__ == "__main__":
         "--raw_data_dir",
         type=str,
         default=path_conf["data_dir"],
-        help="Raw data path of extrasensory data set",
+        help="Raw data path of ucf101 data set",
     )
     
     parser.add_argument(
         "--output_partition_path",
         type=str,
         default=path_conf["output_dir"],
-        help="Output path of speech_commands data set",
+        help="Output path of ucf101 data set",
     )
 
     parser.add_argument(
