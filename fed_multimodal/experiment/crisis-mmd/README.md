@@ -2,6 +2,8 @@
 ### How to run CRISIS-MMD Dataset in FedMultimodal (Image and Text)
 Here we provide an example to quickly start with the experiments, and reproduce the CRISIS-MMD results from the paper. We set the fixed seed for data partitioning, training client sampling, so ideally you would get the exact results (see Table 4, attention-based column) as reported from our paper.
 
+#### This is a very challenging dataset, and we aim to improve the current results with better pre-trained architectures.
+
 
 #### 0. Download data: The data will be under data/crisis-mmd by default. 
 
@@ -84,5 +86,5 @@ bash run_mm.sh
 #### Baseline results for executing the above - We are aware that previous studies have also reported AUC, feel free to add evaluation metric using AUC
 Dataset | Modality | Link | Label Size | Num. of Clients | Split | Alpha | FL Algorithm | Macro-F1 (Federated) | Learning Rate | Global Epoch |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:| :---:| :---:|
-Crisis-MMD | Image/Text | [Crisis-Data](https://crisisnlp.qcri.org/crisismmd) | 8 | 100 | Manual | 5.0 <br> 5.0 <br> 0.1 <br> 0.1 |  FedAvg <br> FedOpt <br> FedAvg <br> FedOpt | 77.74% <br> 85.17% <br> 76.66% <br> 79.80% | 0.05 | 200 |
+Crisis-MMD | Image/Text | [Crisis-Data](https://crisisnlp.qcri.org/crisismmd) | 8 | 100 | Manual | 5.0 <br> 5.0 <br> 0.1 <br> 0.1 |  FedAvg <br> FedOpt <br> FedAvg <br> FedOpt | 39.89% <br> 38.74% <br> 8.93% <br> 27.59% | 0.05 | 200 |
 
