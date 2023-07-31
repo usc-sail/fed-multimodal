@@ -1,28 +1,14 @@
+# Author: Tiantian Feng
+# USC SAIL lab, tiantiaf@usc.edu
 import json
-import pickle
 import sys, os
 import re, pdb
 import argparse
-import numpy as np
-import pandas as pd
-import os.path as osp
-from tqdm import tqdm
 from pathlib import Path
+
 
 from fed_multimodal.features.data_partitioning.partition_manager import PartitionManager
 
-# Define logging console
-import logging
-logging.basicConfig(
-    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
-    level=logging.INFO, 
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-
-def remove_url(text):
-    text = re.sub(r'http\S+', '', text)
-    # re.sub(r'^https?:\/\/.*[\r\n]*', '', text, flags=re.MULTILINE)
-    return(text)
 
 def data_partition(args: dict):
     
@@ -33,50 +19,40 @@ def data_partition(args: dict):
     pm = PartitionManager(args)
     
     # Fetch all labels
-    pm.fetch_label_dict() # obtaining the label dictionary 
-
-    # get the raw csv data
-    data_path = Path(args.raw_data_dir).joinpath(args.dataset, 'CrisisMMD_v2.0')
-    train_csv_data = pd.read_csv(data_path.joinpath("crisismmd_datasplit_all", "task_humanitarian_text_img_train.tsv"), sep='\t')
-    val_csv_data = pd.read_csv(data_path.joinpath("crisismmd_datasplit_all", "task_humanitarian_text_img_dev.tsv"), sep='\t')
-    test_csv_data = pd.read_csv(data_path.joinpath("crisismmd_datasplit_all", "task_humanitarian_text_img_test.tsv"), sep='\t')
-
-    train_data_dict, dev_data_dict, test_data_dict = dict(), dict(), dict()
+    pm.fetch_label_dict()
     
-    # train dict generate from csv data
-    logging.info("Partition train data")
-    for i in tqdm(np.arange(train_csv_data.shape[0])):
-        train_text = remove_url(train_csv_data['tweet_text'].iloc[i]).strip()
-        # print(train_text)
-        train_data_dict[train_csv_data['image_id'].iloc[i]] = [
-            train_csv_data['image_id'].iloc[i],
-            str(Path(data_path).joinpath(train_csv_data['image'].iloc[i])),
-            pm.label_dict[train_csv_data['label_image'].iloc[i]],
-            train_text
-        ]
-        
-    # val dict generate from csv data
-    logging.info("Partition validation data")
-    for i in tqdm(np.arange(val_csv_data.shape[0])):
-        val_text=remove_url(val_csv_data['tweet_text'].iloc[i]).strip()
-        dev_data_dict[val_csv_data['image_id'].iloc[i]] = [
-            val_csv_data['image_id'].iloc[i],
-            str(Path(data_path).joinpath(val_csv_data['image'].iloc[i])),
-            pm.label_dict[val_csv_data['label_image'].iloc[i]],
-            val_text
-        ]
-        
-    #test dict generate from csv data
-    logging.info("Partition test data")
-    for i in tqdm(np.arange(test_csv_data.shape[0])):
-        test_text=remove_url(val_csv_data['tweet_text'].iloc[i]).strip()
-        test_data_dict[test_csv_data['image_id'].iloc[i]] = [
-            test_csv_data['image_id'].iloc[i],
-            str(Path(data_path).joinpath(test_csv_data['image'].iloc[i])),
-            pm.label_dict[test_csv_data['label_image'].iloc[i]],
-            test_text
-        ]
-
+    # read train, dev, and test dict
+    train_data_dict, dev_data_dict, test_data_dict = dict(), dict(), dict()
+    with open(Path(args.raw_data_dir).joinpath(args.dataset, "train.jsonl"), "r") as f:
+        for line in f:
+            line_data = json.loads(line)
+            train_data_dict[line_data['img']] = [
+                line_data['img'], 
+                str(Path(args.raw_data_dir).joinpath(args.dataset, line_data['img'])), 
+                line_data['label'],
+                line_data['text']
+            ]
+    with open(Path(args.raw_data_dir).joinpath(args.dataset, "dev_seen.jsonl"), "r") as f:
+        for line in f:
+            line_data = json.loads(line)
+            dev_data_dict[line_data['img']] = [
+                line_data['img'], 
+                str(Path(args.raw_data_dir).joinpath(args.dataset, line_data['img'])), 
+                line_data['label'],
+                line_data['text']
+            ]
+    with open(Path(args.raw_data_dir).joinpath(args.dataset, "test_seen.jsonl"), "r") as f: 
+        for line in f:
+            line_data = json.loads(line)
+            test_data_dict[line_data['img']] = [
+                line_data['img'], 
+                str(Path(args.raw_data_dir).joinpath(args.dataset, line_data['img'])), 
+                line_data['label'],
+                line_data['text']
+            ]
+    
+    # Creating dictionary for partition
+    # Read labels from train files
     train_file_ids = list(train_data_dict.keys())
     train_file_ids.sort()
     
@@ -90,7 +66,7 @@ def data_partition(args: dict):
     )
 
     # Save the partition
-    output_data_path = Path(args.output_partition_path).joinpath('partition', args.dataset)
+    output_data_path = Path(args.output_partition_path).joinpath("partition", args.dataset)
     Path.mkdir(output_data_path, parents=True, exist_ok=True)
 
     # Obtrain train mapping
@@ -108,15 +84,15 @@ def data_partition(args: dict):
     jsonFile.write(jsonString)
     jsonFile.close()
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     # read path config files
     path_conf = dict()
     with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
         for line in f:
             key, val = line.strip().split('=')
             path_conf[key] = val.replace("\"", "")
-            
+
     # If default setting
     if path_conf["data_dir"] == ".":
         path_conf["data_dir"] = str(Path(os.path.realpath(__file__)).parents[3].joinpath('data'))
@@ -129,14 +105,14 @@ if __name__ == "__main__":
         "--raw_data_dir",
         type=str,
         default=path_conf["data_dir"],
-        help="Raw data path of crisis-mmd data set",
+        help="Raw data path of hateful memes data set",
     )
     
     parser.add_argument(
         "--output_partition_path",
         type=str,
         default=path_conf["output_dir"],
-        help="Output path of crisis-mmd data set",
+        help="Output path of hateful memes data set",
     )
 
     parser.add_argument(
@@ -156,16 +132,17 @@ if __name__ == "__main__":
     parser.add_argument(
         '--num_clients', 
         type=int, 
-        default=100, 
+        default=40, 
         help='Number of clients to cut from whole data.'
     )
-
     parser.add_argument(
         "--dataset",
         type=str, 
-        default="crisis-mmd",
+        default="hateful_memes",
         help='Dataset name.'
     )
     args = parser.parse_args()
     data_partition(args)
+    
+    
     

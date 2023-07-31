@@ -1,24 +1,15 @@
 import os
 import pdb
+import pdb
 import pickle
 import logging
-import warnings
 import argparse
 
 from tqdm import tqdm
 from pathlib import Path
 
-warnings.filterwarnings('ignore')
-
 from fed_multimodal.features.feature_processing.feature_manager import FeatureManager
 
-# define logging console
-import logging
-logging.basicConfig(
-    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
-    level=logging.INFO, 
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
 
 def parse_args():
     # read path config files
@@ -27,7 +18,7 @@ def parse_args():
         for line in f:
             key, val = line.strip().split('=')
             path_conf[key] = val.replace("\"", "")
-            
+    
     # If default setting
     if path_conf["data_dir"] == ".":
         path_conf["data_dir"] = str(Path(os.path.realpath(__file__)).parents[3].joinpath('data'))
@@ -59,7 +50,7 @@ def parse_args():
         default=1.0,
         help="alpha in direchlet distribution",
     )
-    parser.add_argument("--dataset", default="crisis-mmd")
+    parser.add_argument("--dataset", default="hateful_memes")
     args = parser.parse_args()
     return args
 
@@ -83,7 +74,7 @@ if __name__ == '__main__':
 
     # fetch all files for processing
     partition_dict = fm.fetch_partition(alpha=args.alpha)
-    logging.info(f'Total number of clients (including dev and test) found: {len(partition_dict.keys())}')
+    print(f'Total number of clients found: {len(partition_dict.keys())}')
     
     # extract data, read base case first, alpha=1.0
     # If the base folder is empty, we extract for the base case

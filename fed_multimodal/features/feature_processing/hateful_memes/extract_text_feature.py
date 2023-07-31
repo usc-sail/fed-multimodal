@@ -2,39 +2,29 @@ import os
 import pdb
 import pickle
 import logging
-import warnings
-import argparse
+import argparse, sys
 
 from tqdm import tqdm
 from pathlib import Path
 
-warnings.filterwarnings('ignore')
-
 from fed_multimodal.features.feature_processing.feature_manager import FeatureManager
 
-# define logging console
-import logging
-logging.basicConfig(
-    format='%(asctime)s %(levelname)-3s ==> %(message)s', 
-    level=logging.INFO, 
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-
 def parse_args():
+    
     # read path config files
     path_conf = dict()
     with open(str(Path(os.path.realpath(__file__)).parents[3].joinpath('system.cfg'))) as f:
         for line in f:
             key, val = line.strip().split('=')
             path_conf[key] = val.replace("\"", "")
-            
+
     # If default setting
     if path_conf["data_dir"] == ".":
         path_conf["data_dir"] = str(Path(os.path.realpath(__file__)).parents[3].joinpath('data'))
     if path_conf["output_dir"] == ".":
         path_conf["output_dir"] = str(Path(os.path.realpath(__file__)).parents[3].joinpath('output'))
 
-    parser = argparse.ArgumentParser(description='Extract img features')
+    parser = argparse.ArgumentParser(description='Extract text features')
     parser.add_argument(
         '--raw_data_dir',
         default=path_conf["data_dir"],
@@ -47,9 +37,10 @@ def parse_args():
         type=str, 
         help='output feature directory'
     )
+    
     parser.add_argument(
         '--feature_type', 
-        default='mobilenet_v2',
+        default='mobilebert',
         type=str, 
         help='output feature name'
     )
@@ -59,7 +50,7 @@ def parse_args():
         default=1.0,
         help="alpha in direchlet distribution",
     )
-    parser.add_argument("--dataset", default="crisis-mmd")
+    parser.add_argument("--dataset", default="hateful_memes")
     args = parser.parse_args()
     return args
 
@@ -71,7 +62,7 @@ if __name__ == '__main__':
     alpha_str = str(args.alpha).replace('.', '')
     output_data_path = Path(args.output_dir).joinpath(
         'feature', 
-        'img', 
+        'text', 
         args.feature_type, 
         args.dataset, 
         f'alpha{alpha_str}'
@@ -83,13 +74,13 @@ if __name__ == '__main__':
 
     # fetch all files for processing
     partition_dict = fm.fetch_partition(alpha=args.alpha)
-    logging.info(f'Total number of clients (including dev and test) found: {len(partition_dict.keys())}')
+    print(f'Total number of clients found: {len(partition_dict.keys())}')
     
     # extract data, read base case first, alpha=1.0
     # If the base folder is empty, we extract for the base case
     base_data_path = Path(args.output_dir).joinpath(
         'feature', 
-        'img', 
+        'text', 
         args.feature_type, 
         args.dataset, 
         f'alpha50'
@@ -105,8 +96,10 @@ if __name__ == '__main__':
             if Path.exists(output_data_path.joinpath(f'{client}.pkl')) == True: continue
             # extract feature
             for idx in range(len(partition_dict[client])):
-                file_path = partition_dict[client][idx][1]
-                features = fm.extract_img_features(file_path)
+                text_str = partition_dict[client][idx][-1]
+                features = fm.extract_text_feature(
+                    input_str=text_str
+                )
                 data_dict[idx][-1] = features
             # saving features
             with open(str(output_data_path.joinpath(f'{client}.pkl')), 'wb') as handle:
