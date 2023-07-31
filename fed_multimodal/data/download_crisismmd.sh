@@ -17,8 +17,9 @@ cd crisis-mmd
 wget -r -N -c -np --no-check-certificate https://crisisnlp.qcri.org/data/crisismmd/CrisisMMD_v2.0.tar.gz
 mv crisisnlp.qcri.org/data/crisismmd/CrisisMMD_v2.0.tar.gz CrisisMMD_v2.0.tar.gz
 
-tar -xvzf CrisisMMD_v2.0.tar.gz && CrisisMMD_v2.0/
+tar -xvzf CrisisMMD_v2.0.tar.gz && cd CrisisMMD_v2.0/
 unzip crisismmd_datasplit_all.zip
 
 cd ..
 rm -r crisisnlp.qcri.org
+

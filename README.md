@@ -10,12 +10,12 @@ The framework figure:
 
 ## Applications supported
 * #### Cross-Device Applications
-    * Speech Emotion Recognition
-    * Multimedia Action Recognition
-    * Human Activity Recognition
-    * Social Media
+    * Emotion Recognition [CREMA-D] [Meld]
+    * Multimedia Action Recognition [UCF-101] [Moments in Times]
+    * Human Activity Recognition [[UCI-HAR](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/uci-har)] [[KU-HAR](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/ku-har)] 
+    * Social Media [[Crisis-MMD](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/crisis-mmd)] [Hateful-Memes]
 * #### Cross-silo Applications (e.g. Medical Settings)
-    * ECG classification
+    * ECG classification [[PTB-XL](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/experiment/ptb-xl)]
     * Ego-4D (To Appear)
     * Medical Imaging (To Appear)
 

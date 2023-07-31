@@ -66,5 +66,5 @@ bash run_mm.sh
 #### Baseline results for executing the above
 Dataset | Modality | Paper | Label Size | Num. of Clients | Split | Alpha | FL Algorithm | F1 (Federated) | Learning Rate | Global Epoch |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:| :---:| :---:|
-KU-HAR | Acc+Gyro | [KU-HAR](https://data.mendeley.com/datasets/45f952y38r/5) | 18 | ~65 | Natural+Manual | - |  FedAvg <br> FedOpt | 61.78% <br> 71.41% | 0.05 | 200 |
+KU-HAR | Acc+Gyro | [KU-HAR](https://data.mendeley.com/datasets/45f952y38r/5) | 18 | ~65 | Manual | - |  FedAvg <br> FedOpt | 61.78% <br> 71.41% | 0.05 | 200 |
 

@@ -1,6 +1,8 @@
 
 ### How to run PTB-XL Dataset in FedMultimodal (I-AVF and V1-V6)
-Here we provide an example to quickly start with the experiments, and reproduce the PTB-XL results from the paper. We set the fixed seed for data partitioning, training client sampling, so ideally you would get the exact results (see Table 4, attention-based column) as reported from our paper.
+Here we provide an example to quickly start with the experiments, and reproduce the PTB-XL results. We set the fixed seed for data partitioning, training client sampling, so ideally you would get the exact results (see Table 4, attention-based column) as reported from our paper.
+
+#### Disclaimer: We used the v2 data in the paper, so the performance number might vary for a little, but any conclusion would stay the same. While PTB-XL release a v3 makes some data corrections, we highly recommend the reader to use v3 data.
 
 
 #### 0. Download data: The data will be under data/ptb-xl by default. 

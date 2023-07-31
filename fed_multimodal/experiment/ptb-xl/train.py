@@ -43,6 +43,7 @@ def parse_args():
         for line in f:
             key, val = line.strip().split('=')
             path_conf[key] = val.replace("\"", "")
+            
     # If default setting
     if path_conf["data_dir"] == ".":
         path_conf["data_dir"] = str(Path(os.path.realpath(__file__)).parents[2].joinpath('data'))
