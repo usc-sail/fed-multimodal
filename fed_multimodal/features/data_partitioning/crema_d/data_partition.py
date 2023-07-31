@@ -3,7 +3,7 @@ import copy
 import json
 import argparse
 import pandas as pd
-import argparse, pickle, pdb, re
+import argparse, pdb, re
 
 from pathlib import Path
 from sklearn.model_selection import KFold
