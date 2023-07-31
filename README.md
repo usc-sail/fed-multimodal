@@ -40,6 +40,14 @@ Then pip install the package:
 pip install -e .
 ```
 
+### [Data processing recipe](https://github.com/usc-sail/fed-multimodal/tree/main/fed_multimodal/features)
+
+Feature processing includes 3 steps:
+
+* Data partitioning
+* Simulation features
+* Feature processing
+
 ### Quick Start -- UCI-HAR Example (Acc. and Gyro)
 Here we provide an example to quickly start with the experiments, and reproduce the UCI-HAR results from the paper. We set the fixed seed for data partitioning, training client sampling, so ideally you would get the exact results (see Table 4, attention-based column) as reported from our paper.
 
@@ -49,7 +57,7 @@ Here we provide an example to quickly start with the experiments, and reproduce 
 You can modify the data path in system.cfg to the desired path.
 
 ```
-cd data
+cd fed_multimodal/data
 bash download_uci_har.sh
 cd ..
 ```
