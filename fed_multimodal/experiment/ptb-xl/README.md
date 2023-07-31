@@ -79,8 +79,8 @@ cd experiment/ptb-xl
 bash run_mm.sh
 ```
 
-#### Baseline results for executing the above - We are aware that previous studies have also reported AUC, feel free to add evaluation metric using AUC
+#### Baseline results for executing the above - We are aware that previous studies have also reported AUC, feel free to add evaluation metric using AUC. This result is different than what we reported in the paper (ptb-xl v2), as we used ptb-xl v3 here.
 Dataset | Modality | Link | Label Size | Num. of Clients | Split | Alpha | FL Algorithm | Macro-F1 (Federated) | Learning Rate | Global Epoch |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:| :---:| :---:|
-PTB-XL | I-AVF/V1-V6 | [PTB-XL](https://physionet.org/content/ptb-xl/1.0.3/) | 33 |  | Natural | - |  FedAvg <br> FedOpt | 61.88% <br> 62.42% | 0.05 | 200 |
+PTB-XL | I-AVF/V1-V6 | [PTB-XL](https://physionet.org/content/ptb-xl/1.0.3/) | 5 | 33 | Natural | - |  FedAvg <br> FedOpt | 61.88% <br> 63.16% | 0.05 | 200 |
 
