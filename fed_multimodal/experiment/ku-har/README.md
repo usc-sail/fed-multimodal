@@ -3,7 +3,7 @@
 Here we provide an example to quickly start with the experiments, and reproduce the KU-HAR results from the paper. We set the fixed seed for data partitioning, training client sampling, so ideally you would get the exact results (see Table 4, attention-based column) as reported from our paper.
 
 
-#### 0. Download data: The data will be under data/uci-har by default. 
+#### 0. Download data: The data will be under data/ku-har by default. 
 
 You can modify the data path in system.cfg to the desired path.
 
